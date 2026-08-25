@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { SessionList } from './components/SessionList';
 import { ChatArea } from './components/ChatArea';
 import { CitationDrawer } from './components/CitationDrawer';
 import { ChunkModal } from './components/ChunkModal';
 import { Playground } from './components/Playground';
-import type { KnowledgeBase, ChatMessage, ReferenceItem, HealthInfo } from './types';
+import type { KnowledgeBase, ChatSession, ChatMessage, ReferenceItem, HealthInfo } from './types';
 import { api } from './services/api';
+
+const STORAGE_KEY = 'rag_gk_sessions_v1';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'playground'>('chat');
@@ -14,8 +17,17 @@ export const App: React.FC = () => {
   const [selectedKB, setSelectedKB] = useState<string>('');
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
 
-  // Chat State
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Multi-Session State (Persisted in localStorage)
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -26,6 +38,15 @@ export const App: React.FC = () => {
 
   // Chunk Visualizer Modal State
   const [isChunkModalOpen, setIsChunkModalOpen] = useState(false);
+
+  // Save sessions to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } catch (e) {
+      console.error('Failed to save sessions to localStorage:', e);
+    }
+  }, [sessions]);
 
   // 1. Initial Load: Health & Knowledge Bases
   const loadKBs = async () => {
@@ -45,9 +66,97 @@ export const App: React.FC = () => {
     loadKBs();
   }, []);
 
-  // 2. Chat Handler: Send message and stream SSE
+  // Filter sessions for the currently selected Knowledge Base
+  const currentKBSessions = useMemo(() => {
+    if (!selectedKB) return [];
+    return sessions.filter((s) => s.kb_name === selectedKB);
+  }, [sessions, selectedKB]);
+
+  // Active Session Object
+  const activeSession = useMemo(() => {
+    return sessions.find((s) => s.id === activeSessionId) || null;
+  }, [sessions, activeSessionId]);
+
+  // When selectedKB changes, auto-select or auto-create a session
+  useEffect(() => {
+    if (!selectedKB) return;
+    const kbSessions = sessions.filter((s) => s.kb_name === selectedKB);
+    if (kbSessions.length > 0) {
+      if (!kbSessions.some((s) => s.id === activeSessionId)) {
+        setActiveSessionId(kbSessions[0].id);
+      }
+    } else {
+      // Auto create an initial session for this KB
+      handleCreateSession(selectedKB);
+    }
+  }, [selectedKB]);
+
+  // Create a new session
+  const handleCreateSession = (kbName: string = selectedKB) => {
+    if (!kbName) return;
+    const newSessionId = 'session-' + Date.now();
+    const newSession: ChatSession = {
+      id: newSessionId,
+      kb_name: kbName,
+      title: '新对话 ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: Date.now(),
+      updated_at: Date.now(),
+      messages: [],
+    };
+
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newSessionId);
+    setIsCitationOpen(false);
+  };
+
+  // Rename a session
+  const handleRenameSession = (sessionId: string, newTitle: string) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, title: newTitle, updated_at: Date.now() } : s))
+    );
+  };
+
+  // Delete a session
+  const handleDeleteSession = (sessionId: string) => {
+    if (!confirm('确定要删除此对话记录吗？')) return;
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== sessionId);
+      const remainingKB = remaining.filter((s) => s.kb_name === selectedKB);
+      if (sessionId === activeSessionId) {
+        if (remainingKB.length > 0) {
+          setActiveSessionId(remainingKB[0].id);
+        } else {
+          // If no sessions left, create one
+          setTimeout(() => handleCreateSession(selectedKB), 0);
+        }
+      }
+      return remaining;
+    });
+  };
+
+  // Clear all sessions for current KB
+  const handleClearSessionsForKB = () => {
+    if (!confirm(`确定清空知识库 "${selectedKB}" 下的所有对话记录吗？`)) return;
+    setSessions((prev) => prev.filter((s) => s.kb_name !== selectedKB));
+    setTimeout(() => handleCreateSession(selectedKB), 0);
+  };
+
+  // Clear messages in current active session
+  const handleClearCurrentMessages = () => {
+    if (!confirm('确定要清空当前对话中的消息吗？')) return;
+    if (!activeSessionId) return;
+    setSessions((prev) =>
+      prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [], updated_at: Date.now() } : s))
+    );
+    setIsCitationOpen(false);
+  };
+
+  // Send message and stream response into the active session
   const handleSendMessage = async (query: string) => {
-    if (!selectedKB || isStreaming) return;
+    if (!selectedKB || !activeSessionId || isStreaming) return;
+
+    const currentSession = sessions.find((s) => s.id === activeSessionId);
+    const isFirstMessage = !currentSession || currentSession.messages.length === 0;
 
     const userMessageId = 'user-' + Date.now();
     const assistantMessageId = 'assistant-' + (Date.now() + 1);
@@ -68,15 +177,32 @@ export const App: React.FC = () => {
       timestamp: Date.now(),
     };
 
-    const updatedMessages = [...messages, userMsg];
-    setMessages([...updatedMessages, initialAssistantMsg]);
-    setIsStreaming(true);
+    // Auto-rename session if it's the first message
+    const autoTitle = isFirstMessage && currentSession?.title.startsWith('新对话')
+      ? query.slice(0, 20) + (query.length > 20 ? '...' : '')
+      : currentSession?.title || '对话';
 
+    // Update session state with user message + empty assistant placeholder
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            title: autoTitle,
+            updated_at: Date.now(),
+            messages: [...s.messages, userMsg, initialAssistantMsg],
+          };
+        }
+        return s;
+      })
+    );
+
+    setIsStreaming(true);
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
     // Convert history format
-    const history = updatedMessages.map((m) => ({
+    const history = (currentSession?.messages || []).map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -87,38 +213,68 @@ export const App: React.FC = () => {
       history,
       signal: abortController.signal,
       onReferences: (references) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, references } : m
-          )
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSessionId) {
+              return {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMessageId ? { ...m, references } : m
+                ),
+              };
+            }
+            return s;
+          })
         );
         setActiveReferences(references);
       },
       onDelta: (delta) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId
-              ? { ...m, content: m.content + delta }
-              : m
-          )
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSessionId) {
+              return {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMessageId ? { ...m, content: m.content + delta } : m
+                ),
+              };
+            }
+            return s;
+          })
         );
       },
       onDone: () => {
         setIsStreaming(false);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, isStreaming: false } : m
-          )
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSessionId) {
+              return {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMessageId ? { ...m, isStreaming: false } : m
+                ),
+              };
+            }
+            return s;
+          })
         );
       },
       onError: (err) => {
         setIsStreaming(false);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId
-              ? { ...m, content: m.content + `\n\n> ⚠️ **错误**: ${err}`, isStreaming: false }
-              : m
-          )
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id === activeSessionId) {
+              return {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, content: m.content + `\n\n> ⚠️ **错误**: ${err}`, isStreaming: false }
+                    : m
+                ),
+              };
+            }
+            return s;
+          })
         );
       },
     });
@@ -132,14 +288,6 @@ export const App: React.FC = () => {
     setIsStreaming(false);
   };
 
-  const handleClearMessages = () => {
-    if (confirm('确定要清空当前对话历史吗？')) {
-      setMessages([]);
-      setActiveReferences([]);
-      setIsCitationOpen(false);
-    }
-  };
-
   const handleOpenCitation = (refId: number) => {
     setActiveRefId(refId);
     setIsCitationOpen(true);
@@ -147,16 +295,16 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-brand-500/30 selection:text-brand-200">
-      {/* Top Header */}
+      {/* 顶部导航栏 */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         healthInfo={healthInfo}
       />
 
-      {/* Main Workspace Layout */}
+      {/* 主体三栏布局 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
+        {/* 一栏：知识库管理侧边栏 (256px) */}
         <Sidebar
           knowledgeBases={knowledgeBases}
           selectedKB={selectedKB}
@@ -165,22 +313,46 @@ export const App: React.FC = () => {
           onOpenChunkModal={() => setIsChunkModalOpen(true)}
         />
 
-        {/* Center Content: Chat or Playground */}
+        {/* 二栏：会话列表管理 (260px) */}
+        {activeTab === 'chat' && (
+          <SessionList
+            sessions={currentKBSessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={(id) => {
+              setActiveSessionId(id);
+              const target = sessions.find((s) => s.id === id);
+              if (target && target.messages.length > 0) {
+                const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
+                if (lastAssistant && lastAssistant.references) {
+                  setActiveReferences(lastAssistant.references);
+                }
+              }
+            }}
+            onCreateSession={() => handleCreateSession(selectedKB)}
+            onRenameSession={handleRenameSession}
+            onDeleteSession={handleDeleteSession}
+            onClearSessions={handleClearSessionsForKB}
+          />
+        )}
+
+        {/* 三栏：主对话交互区 或 检索对比 Playground */}
         {activeTab === 'chat' ? (
           <ChatArea
-            messages={messages}
+            messages={activeSession ? activeSession.messages : []}
+            sessionTitle={activeSession ? activeSession.title : ''}
+            selectedKB={selectedKB}
+            isStreaming={isStreaming}
             onSendMessage={handleSendMessage}
             onStopGeneration={handleStopGeneration}
-            onClearMessages={handleClearMessages}
-            isStreaming={isStreaming}
-            selectedKB={selectedKB}
+            onClearMessages={handleClearCurrentMessages}
             onOpenCitation={handleOpenCitation}
+            onRenameSession={(title) => activeSessionId && handleRenameSession(activeSessionId, title)}
           />
         ) : (
           <Playground selectedKB={selectedKB} />
         )}
 
-        {/* Right Citation Drawer */}
+        {/* 侧边滑出：引用溯源抽屉 */}
         <CitationDrawer
           isOpen={isCitationOpen}
           onClose={() => setIsCitationOpen(false)}
@@ -190,7 +362,7 @@ export const App: React.FC = () => {
         />
       </div>
 
-      {/* Chunk Visualizer Modal */}
+      {/* 切片透视模态框 */}
       <ChunkModal
         isOpen={isChunkModalOpen}
         onClose={() => setIsChunkModalOpen(false)}

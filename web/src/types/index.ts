@@ -32,6 +32,15 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface ChatSession {
+  id: string;
+  kb_name: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+  messages: ChatMessage[];
+}
+
 export interface SearchHit {
   rank: number;
   chunk_id: string;

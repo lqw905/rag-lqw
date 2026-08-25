@@ -18,6 +18,14 @@ RAG_SYSTEM_PROMPT = """你是一个严谨、专业的企业级知识库问答助
 {context}
 """
 
+CHITCHAT_SYSTEM_PROMPT = """你是一个严谨、亲和的企业级知识库问答助手。
+当前用户正在进行日常问候、功能咨询或未命中知识库内容。
+【规范要求】：
+1. 请用礼貌、亲和、专业的语气回应用户，并引导用户针对已上传的文档提出具体业务或技术问题；
+2. 若用户提出的是通用问题但当前知识库未收录，请委婉说明当前知识库暂未收录相关资料；
+3. 本次回答无需标注任何引用角标（如 [1] 等）。
+"""
+
 
 class RAGGenerator:
     """RAG 问答与流式生成引擎"""
@@ -41,7 +49,7 @@ class RAGGenerator:
         将召回的切片格式化为规范的 Context 字符串并生成前端引用元数据
         """
         if not retrieved_chunks:
-            return "（暂无检索到相关参考资料）", []
+            return "", []
 
         context_parts = []
         references = []
@@ -72,10 +80,15 @@ class RAGGenerator:
         self,
         query: str,
         context_str: str,
-        chat_history: List[Dict[str, str]] = None
+        chat_history: List[Dict[str, str]] = None,
+        has_context: bool = True
     ) -> List[Dict[str, str]]:
         """组装完整的多轮对话消息与 Token 预算控制"""
-        system_content = RAG_SYSTEM_PROMPT.format(context=context_str)
+        if has_context and context_str.strip():
+            system_content = RAG_SYSTEM_PROMPT.format(context=context_str)
+        else:
+            system_content = CHITCHAT_SYSTEM_PROMPT
+
         messages = [{"role": "system", "content": system_content}]
 
         # 拼接历史对话（若有）
@@ -99,10 +112,11 @@ class RAGGenerator:
         2. 逐步推送 delta 内容
         3. 最后推送完成标记
         """
+        has_context = bool(retrieved_chunks)
         context_str, references = self.format_context(retrieved_chunks)
-        messages = self.build_messages(query, context_str, chat_history)
+        messages = self.build_messages(query, context_str, chat_history, has_context=has_context)
 
-        # 1. 发送参考资料引用列表
+        # 1. 发送参考资料引用列表（若无命中切片，则推送空数组）
         ref_event = {
             "type": "references",
             "references": references
@@ -119,41 +133,38 @@ class RAGGenerator:
                 stream=True
             )
 
-            full_answer = ""
             async for chunk in response:
-                delta = chunk.choices[0].delta.content if chunk.choices and chunk.choices[0].delta else None
-                if delta:
-                    full_answer += delta
-                    content_event = {
-                        "type": "content",
-                        "delta": delta
-                    }
-                    yield f"data: {json.dumps(content_event, ensure_ascii=False)}\n\n"
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        delta_event = {
+                            "type": "delta",
+                            "delta": delta.content
+                        }
+                        yield f"data: {json.dumps(delta_event, ensure_ascii=False)}\n\n"
 
-            # 3. 发送结束标记
-            done_event = {
-                "type": "done",
-                "total_tokens": count_tokens(full_answer)
-            }
+            # 3. 完成标记
+            done_event = {"type": "done"}
             yield f"data: {json.dumps(done_event, ensure_ascii=False)}\n\n"
 
         except Exception as e:
             logger.error(f"LLM streaming generation failed: {e}")
             err_event = {
                 "type": "error",
-                "message": f"LLM 生成失败: {str(e)}"
+                "error": str(e)
             }
             yield f"data: {json.dumps(err_event, ensure_ascii=False)}\n\n"
 
-    def generate(
+    def generate_sync(
         self,
         query: str,
         retrieved_chunks: List[Dict[str, Any]],
         chat_history: List[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """非流式直接生成"""
+        has_context = bool(retrieved_chunks)
         context_str, references = self.format_context(retrieved_chunks)
-        messages = self.build_messages(query, context_str, chat_history)
+        messages = self.build_messages(query, context_str, chat_history, has_context=has_context)
 
         try:
             response = self.sync_client.chat.completions.create(

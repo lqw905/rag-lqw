@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     SPARSE_TOP_K: int = 20
     RERANK_TOP_N: int = 5
     RRF_K: int = 60
+    RERANK_MIN_SCORE: float = 0.08  # 相关度置信度阈值，低于此分数的噪音切片自动过滤
 
     # Server Settings
     HOST: str = "0.0.0.0"

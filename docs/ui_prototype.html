@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG-GK 多会话管理与知识库问答 UI 原型</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+              950: '#1e1b4b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 自定义美化滚动条与玻璃态动画 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.2);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.4);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-input {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .citation-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 6px;
+      margin: 0 2px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      vertical-align: super;
+      line-height: 1;
+    }
+    .citation-badge:hover {
+      background: #6366f1;
+      color: #ffffff;
+      transform: translateY(-1px) scale(1.05);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.8; }
+    }
+    .glow-dot {
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased h-screen overflow-hidden flex flex-col selection:bg-brand-500/30 selection:text-brand-200">
+
+  <!-- 顶部主导航栏 (Header) -->
+  <header class="h-14 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md flex items-center justify-between px-5 flex-shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/20 ring-1 ring-white/20">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <div>
+        <span class="font-bold text-base bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">RAG-GK</span>
+        <span class="text-xs px-2 py-0.5 ml-1.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">v1.2 多会话版</span>
+      </div>
+    </div>
+
+    <!-- 中间状态标签 -->
+    <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/60 px-3 py-1.5 rounded-full border border-slate-800">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 glow-dot"></span>
+      <span>当前引擎: <strong class="text-slate-200 font-mono">DeepSeek-V3</strong></span>
+      <span class="text-slate-600">|</span>
+      <span>向量模型: <strong class="text-slate-200 font-mono">BGE-M3</strong></span>
+      <span class="text-slate-600">|</span>
+      <span>重排模型: <strong class="text-slate-200 font-mono">BGE-Reranker</strong></span>
+    </div>
+
+    <!-- 右侧工具操作 -->
+    <div class="flex items-center gap-2.5">
+      <button onclick="alert('这是前端独立 HTML 原型演示，支持完整的会话切换与溯源抽屉互动！')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700/50 flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        原型说明
+      </button>
+      <a href="http://localhost:5173" target="_blank" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center gap-1.5">
+        <span>返回生产系统</span>
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- 主体工作区 (3 栏自适应架构) -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- ==================== 第一栏：知识库管理侧边栏 (Width: 260px) ==================== -->
+    <aside class="w-64 border-r border-slate-800/80 bg-slate-900/30 flex flex-col flex-shrink-0 z-20">
+      
+      <!-- 知识库切换 -->
+      <div class="p-3.5 border-b border-slate-800/80">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7z"/></svg>
+            知识库空间
+          </label>
+          <button onclick="createNewKB()" class="text-[11px] text-brand-400 hover:text-brand-300 font-medium flex items-center gap-0.5 transition-colors">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            新建库
+          </button>
+        </div>
+
+        <select id="kbSelect" onchange="switchKB(this.value)" class="w-full bg-slate-950/80 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/50 cursor-pointer">
+          <option value="gaokao_policy">高考志愿政策与招生库 (38 切片)</option>
+          <option value="tech_architecture">系统架构与设计手册 (64 切片)</option>
+          <option value="company_hr">企业差旅与行政制度 (25 切片)</option>
+        </select>
+      </div>
+
+      <!-- 当前知识库元数据卡片 -->
+      <div class="p-3 m-3 rounded-xl bg-slate-950/50 border border-slate-800/60 flex items-center justify-between text-xs">
+        <div>
+          <div class="text-[11px] text-slate-400">已索引切片总量</div>
+          <div class="text-sm font-bold text-brand-400 font-mono mt-0.5" id="kbChunkCount">38 块</div>
+        </div>
+        <button onclick="alert('已打开切片透视抽屉')" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition-colors border border-slate-700/50">
+          切片透视
+        </button>
+      </div>
+
+      <!-- 文档拖拽上传区 -->
+      <div class="px-3 flex-1 flex flex-col min-h-0">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">文档摄入</div>
+        <div class="border-2 border-dashed border-slate-800 hover:border-brand-500/50 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/20 hover:bg-brand-500/5 flex flex-col items-center justify-center gap-1.5 group">
+          <div class="w-7 h-7 rounded-lg bg-slate-900 group-hover:bg-brand-500/20 flex items-center justify-center text-slate-400 group-hover:text-brand-400 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          </div>
+          <div class="text-xs text-slate-300 font-medium">拖拽或点击上传文档</div>
+          <div class="text-[10px] text-slate-500">支持 .docx, .txt, .md</div>
+        </div>
+
+        <!-- 已上传文件小列表 -->
+        <div class="mt-3 flex-1 overflow-y-auto space-y-1.5 pr-1">
+          <div class="text-[10px] font-semibold text-slate-500">已入库文档 (2)</div>
+          <div class="p-2 rounded-lg bg-slate-950/40 border border-slate-800/40 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-brand-400">📄</span>
+              <span class="text-slate-300 truncate text-[11px]">2025招生章程.docx</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono">24块</span>
+          </div>
+          <div class="p-2 rounded-lg bg-slate-950/40 border border-slate-800/40 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-brand-400">📄</span>
+              <span class="text-slate-300 truncate text-[11px]">历年录取位次表.md</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono">14块</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部版权或配置提示 -->
+      <div class="p-3 border-t border-slate-800/80 text-[10px] text-slate-500 text-center">
+        ChromaDB + BM25 双路索引已就绪
+      </div>
+    </aside>
+
+
+    <!-- ==================== 第二栏：多会话列表管理 (Width: 260px) ==================== -->
+    <aside class="w-64 border-r border-slate-800/80 bg-slate-900/50 flex flex-col flex-shrink-0 z-10">
+      
+      <!-- 新建对话按钮 -->
+      <div class="p-3 border-b border-slate-800/80">
+        <button onclick="createNewSession()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 transition-all flex items-center justify-center gap-2 group">
+          <svg class="w-4 h-4 transition-transform group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>新建对话 (New Chat)</span>
+        </button>
+      </div>
+
+      <!-- 搜索会话框 -->
+      <div class="px-3 pt-2.5">
+        <div class="relative">
+          <input type="text" id="sessionSearch" oninput="filterSessions(this.value)" placeholder="搜索历史会话..." class="w-full bg-slate-950/80 border border-slate-800 text-slate-200 rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 placeholder:text-slate-600">
+          <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+      </div>
+
+      <!-- 会话卡片列表 -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-4" id="sessionListContainer">
+        
+        <!-- 分组：今天 -->
+        <div>
+          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 mb-1.5">今天</div>
+          <div class="space-y-1" id="sessionsToday">
+            <!-- 动态生成会话项目 -->
+          </div>
+        </div>
+
+        <!-- 分组：更早 -->
+        <div>
+          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 mb-1.5">更早</div>
+          <div class="space-y-1" id="sessionsEarlier">
+            <!-- 动态生成会话项目 -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 底部快捷操作 -->
+      <div class="p-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+        <span class="text-[11px]" id="sessionStats">共 3 个对话</span>
+        <button onclick="clearAllSessions()" class="text-[11px] text-slate-500 hover:text-rose-400 transition-colors">清空全部</button>
+      </div>
+    </aside>
+
+
+    <!-- ==================== 第三栏：主对话交互区 (Flex: 1) ==================== -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-950/70 relative">
+      
+      <!-- 对话头部信息栏 -->
+      <div class="h-12 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-md px-5 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2.5 truncate">
+          <!-- 会话标题 (可点击编辑) -->
+          <div class="flex items-center gap-1.5 group cursor-pointer" onclick="renameCurrentSession()">
+            <span class="font-semibold text-sm text-slate-100 truncate" id="currentSessionTitle">关于浙江省高考专项计划填报规则咨询</span>
+            <svg class="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700 font-mono" id="currentKbBadge">高考志愿政策与招生库</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="clearCurrentMessages()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1 transition-colors" title="清空本会话消息">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <span class="hidden sm:inline">清空上下文</span>
+          </button>
+          <button onclick="exportChat()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1 transition-colors" title="导出 Markdown 对话记录">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span class="hidden sm:inline">导出记录</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 消息流动展示区域 -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6" id="messageContainer">
+        
+        <!-- 用户消息示例 -->
+        <div class="flex items-start justify-end gap-3 max-w-4xl ml-auto">
+          <div class="bg-gradient-to-br from-brand-600 to-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm shadow-md shadow-brand-500/10 leading-relaxed max-w-xl">
+            请问在浙江省高考志愿填报中，“高校专项计划”的报名资格和投档录取规则是什么？如果未被录取会影响后续普通批次吗？
+          </div>
+          <div class="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+            ME
+          </div>
+        </div>
+
+        <!-- 助手流式回答消息示例 -->
+        <div class="flex items-start gap-3 max-w-4xl">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-lg shadow-brand-500/20">
+            AI
+          </div>
+          <div class="flex-1 space-y-2">
+            <div class="glass-panel rounded-2xl rounded-tl-sm p-5 text-sm text-slate-200 leading-relaxed space-y-3 shadow-xl">
+              <p>根据《2025年浙江省普通高校招生工作实施意见》及相关高校招生章程，关于<strong>高校专项计划</strong>的核心政策解答如下：</p>
+              
+              <div class="space-y-1.5 pl-2 border-l-2 border-brand-500/40">
+                <p><strong>1. 报考资格要求</strong><span class="citation-badge" onclick="openCitation(1)">[1]</span>：</p>
+                <ul class="list-disc list-inside text-slate-300 text-xs space-y-1 ml-1">
+                  <li>符合当年统一高考报名条件；</li>
+                  <li>本人及父亲或母亲或法定监护人户籍在实施区域的农村，本人具有当地连续3年以上户籍；</li>
+                  <li>本人具有户籍所在县（市、区）高中连续3年学籍并实际就读。</li>
+                </ul>
+              </div>
+
+              <div class="space-y-1.5 pl-2 border-l-2 border-brand-500/40">
+                <p><strong>2. 投档与录取规则</strong><span class="citation-badge" onclick="openCitation(2)">[2]</span>：</p>
+                <p class="text-xs text-slate-300">
+                  高校专项计划安排在<strong>特殊类型招生批次</strong>进行投档录取。考生高考总分原则上需达到浙江省特殊类型招生控制线（一段线），高校依据经公示的入选资格考生名单及填报志愿，按学校招生简章规定的规则择优录取。
+                </p>
+              </div>
+
+              <div class="space-y-1.5 pl-2 border-l-2 border-brand-500/40">
+                <p><strong>3. 对后续普通批次的影响</strong><span class="citation-badge" onclick="openCitation(3)">[3]</span>：</p>
+                <p class="text-xs text-slate-300">
+                  <strong>完全不影响！</strong>高校专项计划属于单独批次填报与录取。若考生未被专项计划录取，其档案将正常参与后续的<strong>普通类平行志愿（一段/二段）</strong>投档录取，相当于为农村学子多提供了一次进入顶尖高校的机会。
+                </p>
+              </div>
+
+              <!-- 底部引用卡片预览 -->
+              <div class="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2 text-xs">
+                <span class="text-slate-500 text-[11px]">引用来源 (点击右侧抽屉查看详情):</span>
+                <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-brand-400 text-[11px] cursor-pointer hover:border-brand-500" onclick="openCitation(1)">[1] 招生章程 > 报考资格</span>
+                <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-brand-400 text-[11px] cursor-pointer hover:border-brand-500" onclick="openCitation(2)">[2] 录取实施意见 > 特殊类型</span>
+                <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-brand-400 text-[11px] cursor-pointer hover:border-brand-500" onclick="openCitation(3)">[3] 志愿填报指南 > 批次衔接</span>
+              </div>
+            </div>
+            
+            <!-- 回复底部工具 -->
+            <div class="flex items-center gap-3 text-xs text-slate-500 pl-1">
+              <button onclick="alert('已复制回答到剪贴板')" class="hover:text-slate-300 flex items-center gap-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                复制
+              </button>
+              <span>•</span>
+              <span>耗时: 1.12s</span>
+              <span>•</span>
+              <span>消耗 Token: 420</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 底部悬浮输入控制区 -->
+      <div class="p-4 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent flex-shrink-0">
+        <div class="max-w-4xl mx-auto space-y-2">
+          
+          <!-- 快捷提问推荐词 -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs text-slate-400 scrollbar-none">
+            <span class="text-slate-600 text-[11px] flex-shrink-0">💡 推荐追问:</span>
+            <button onclick="sendQuickPrompt('计算机类专业对物理和化学的选科要求是什么？')" class="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors flex-shrink-0 text-[11px]">
+              计算机专业选科限制？
+            </button>
+            <button onclick="sendQuickPrompt('如何计算平行志愿投档的位次分？')" class="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors flex-shrink-0 text-[11px]">
+              平行志愿投档位次规则
+            </button>
+            <button onclick="sendQuickPrompt('三位一体综合评价招生的录取流程是怎样的？')" class="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors flex-shrink-0 text-[11px]">
+              三位一体综合评价流程
+            </button>
+          </div>
+
+          <!-- 输入主框 -->
+          <div class="glass-input rounded-2xl p-2 shadow-2xl focus-within:ring-2 focus-within:ring-brand-500/50 focus-within:border-brand-500 transition-all flex items-end gap-2">
+            <textarea id="chatInput" rows="2" placeholder="基于当前知识库提问，按 Enter 发送，Shift + Enter 换行..." class="w-full bg-transparent border-0 text-slate-100 placeholder:text-slate-600 text-sm focus:outline-none resize-none px-2 py-1 leading-relaxed"></textarea>
+            <button onclick="handleSendMessage()" class="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 active:scale-95 text-white shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-slate-600 px-2">
+            <span>RAG-GK 双路混合检索 (Dense + BM25) + Cross-Encoder 语义精排</span>
+            <span>当前会话消息已自动持久化保存</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+
+    <!-- ==================== 右侧滑出：引用溯源抽屉 (Citation Drawer) ==================== -->
+    <div id="citationDrawer" class="w-96 border-l border-slate-800 bg-slate-900/95 backdrop-blur-2xl flex flex-col absolute top-0 right-0 bottom-0 z-30 transition-transform duration-300 ease-in-out translate-x-full shadow-2xl">
+      
+      <!-- 抽屉头部 -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-brand-400"></div>
+          <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">引用溯源与原文切片</h3>
+        </div>
+        <button onclick="closeCitation()" class="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- 抽屉详情内容 -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+        
+        <!-- 元数据统计 -->
+        <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">来源文档:</span>
+            <span class="font-medium text-slate-200" id="drawerDocName">2025招生章程.docx</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">重排相关度得分:</span>
+            <span class="font-bold text-emerald-400 font-mono text-xs" id="drawerScore">0.9624 (极高相关)</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">切片索引编号:</span>
+            <span class="font-mono text-slate-300" id="drawerChunkIndex">#chunk-008</span>
+          </div>
+        </div>
+
+        <!-- 面包屑路径树 -->
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">标题层级面包屑路径</label>
+          <div class="p-2.5 rounded-lg bg-slate-950/80 border border-brand-500/20 text-brand-300 font-mono text-[11px] flex items-center gap-1.5" id="drawerBreadcrumb">
+            <span>招生章程</span>
+            <span class="text-slate-600">&gt;</span>
+            <span>第三章 报考资格</span>
+            <span class="text-slate-600">&gt;</span>
+            <span>高校专项计划条件</span>
+          </div>
+        </div>
+
+        <!-- 原文高亮摘录 -->
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">切片原文内容 (Markdown 结构化)</label>
+          <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 text-slate-300 leading-relaxed font-mono text-xs whitespace-pre-wrap selection:bg-brand-500/40" id="drawerContent">
+### 第三章 报考资格与实施范围
+
+第十二条 高校专项计划定向招收边远、脱贫、民族等地区县（含县级市）以下高中勤奋好学、成绩优良的农村学生。
+
+报考学生须同时具备下列三项基本条件：
+1. 符合统一高考报名条件；
+2. 本人及父亲或母亲或法定监护人户籍在实施区域的农村，本人具有当地连续3年以上户籍；
+3. 本人具有户籍所在县（市、区）高中连续3年学籍并实际就读。
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 抽屉底部操作 -->
+      <div class="p-3 border-t border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-[11px] text-slate-500">命中算法: BGE-Reranker-v2-m3</span>
+        <button onclick="alert('已复制该切片原文')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors">
+          复制原文
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ==================== 前端原型状态与交互模拟逻辑 (Javascript) ==================== -->
+  <script>
+    // 模拟会话数据仓库 (按知识库分库存储)
+    const store = {
+      activeKB: 'gaokao_policy',
+      activeSessionId: 's1',
+      sessions: {
+        'gaokao_policy': [
+          {
+            id: 's1',
+            title: '关于浙江省高考专项计划填报规则咨询',
+            updatedAt: '10:24',
+            group: 'today',
+            messagesCount: 2
+          },
+          {
+            id: 's2',
+            title: '计算机类专业选科与历年位次线对比',
+            updatedAt: '09:15',
+            group: 'today',
+            messagesCount: 4
+          },
+          {
+            id: 's3',
+            title: '三位一体综合评价报名材料与流程',
+            updatedAt: '昨天',
+            group: 'earlier',
+            messagesCount: 6
+          }
+        ],
+        'tech_architecture': [
+          {
+            id: 's4',
+            title: 'RAG 混合检索 RRF 算法打分机制排查',
+            updatedAt: '14:20',
+            group: 'today',
+            messagesCount: 3
+          }
+        ],
+        'company_hr': [
+          {
+            id: 's5',
+            title: '北京上海出差住宿补贴上限标准查询',
+            updatedAt: '前天',
+            group: 'earlier',
+            messagesCount: 2
+          }
+        ]
+      }
+    };
+
+    // 渲染会话列表
+    function renderSessionList() {
+      const todayList = document.getElementById('sessionsToday');
+      const earlierList = document.getElementById('sessionsEarlier');
+      todayList.innerHTML = '';
+      earlierList.innerHTML = '';
+
+      const currentSessions = store.sessions[store.activeKB] || [];
+      document.getElementById('sessionStats').innerText = `共 ${currentSessions.length} 个对话`;
+
+      currentSessions.forEach(session => {
+        const isActive = session.id === store.activeSessionId;
+        const card = document.createElement('div');
+        card.className = `p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between group text-xs ${
+          isActive 
+            ? 'bg-brand-600/20 border border-brand-500/40 text-white shadow-sm' 
+            : 'hover:bg-slate-800/60 text-slate-300 border border-transparent'
+        }`;
+        
+        card.onclick = () => selectSession(session.id);
+
+        card.innerHTML = `
+          <div class="flex items-center gap-2 truncate flex-1 min-w-0">
+            <svg class="w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-brand-400' : 'text-slate-500'}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span class="truncate font-medium">${session.title}</span>
+          </div>
+          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1 flex-shrink-0">
+            <button onclick="event.stopPropagation(); renameSession('${session.id}')" class="p-1 hover:text-brand-400 text-slate-400" title="重命名">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </button>
+            <button onclick="event.stopPropagation(); deleteSession('${session.id}')" class="p-1 hover:text-rose-400 text-slate-400" title="删除">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+        `;
+
+        if (session.group === 'today') {
+          todayList.appendChild(card);
+        } else {
+          earlierList.appendChild(card);
+        }
+      });
+    }
+
+    // 切换知识库
+    function switchKB(kbValue) {
+      store.activeKB = kbValue;
+      const currentSessions = store.sessions[kbValue] || [];
+      if (currentSessions.length > 0) {
+        store.activeSessionId = currentSessions[0].id;
+        document.getElementById('currentSessionTitle').innerText = currentSessions[0].title;
+      } else {
+        createNewSession();
+      }
+      
+      const kbNames = {
+        'gaokao_policy': '高考志愿政策与招生库',
+        'tech_architecture': '系统架构与设计手册',
+        'company_hr': '企业差旅与行政制度'
+      };
+      const chunkCounts = {
+        'gaokao_policy': '38 块',
+        'tech_architecture': '64 块',
+        'company_hr': '25 块'
+      };
+      document.getElementById('currentKbBadge').innerText = kbNames[kbValue] || kbValue;
+      document.getElementById('kbChunkCount').innerText = chunkCounts[kbValue] || '0 块';
+      renderSessionList();
+    }
+
+    // 选择会话
+    function selectSession(sessionId) {
+      store.activeSessionId = sessionId;
+      const currentSessions = store.sessions[store.activeKB] || [];
+      const session = currentSessions.find(s => s.id === sessionId);
+      if (session) {
+        document.getElementById('currentSessionTitle').innerText = session.title;
+      }
+      renderSessionList();
+    }
+
+    // 新建会话
+    function createNewSession() {
+      const newId = 's_' + Date.now();
+      const newSession = {
+        id: newId,
+        title: '新建未命名会话 ' + new Date().toLocaleTimeString().slice(0, 5),
+        updatedAt: '刚刚',
+        group: 'today',
+        messagesCount: 0
+      };
+      if (!store.sessions[store.activeKB]) {
+        store.sessions[store.activeKB] = [];
+      }
+      store.sessions[store.activeKB].unshift(newSession);
+      store.activeSessionId = newId;
+      document.getElementById('currentSessionTitle').innerText = newSession.title;
+      renderSessionList();
+      
+      // 清空主对话区显示初始欢迎卡片
+      document.getElementById('messageContainer').innerHTML = `
+        <div class="text-center py-16 space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-brand-600/20 text-brand-400 flex items-center justify-center mx-auto border border-brand-500/30">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          </div>
+          <h3 class="text-base font-semibold text-slate-200">已开辟新会话</h3>
+          <p class="text-xs text-slate-400 max-w-sm mx-auto">当前已绑定知识库：<strong class="text-brand-400 font-normal">${document.getElementById('currentKbBadge').innerText}</strong>。请输入您的问题开始智能问答。</p>
+        </div>
+      `;
+    }
+
+    // 重命名会话
+    function renameSession(sessionId) {
+      const currentSessions = store.sessions[store.activeKB] || [];
+      const session = currentSessions.find(s => s.id === sessionId);
+      if (!session) return;
+      const newTitle = prompt('请输入新会话名称：', session.title);
+      if (newTitle && newTitle.trim()) {
+        session.title = newTitle.trim();
+        if (store.activeSessionId === sessionId) {
+          document.getElementById('currentSessionTitle').innerText = session.title;
+        }
+        renderSessionList();
+      }
+    }
+
+    function renameCurrentSession() {
+      renameSession(store.activeSessionId);
+    }
+
+    // 删除会话
+    function deleteSession(sessionId) {
+      if (!confirm('确定删除该会话记录吗？')) return;
+      let currentSessions = store.sessions[store.activeKB] || [];
+      store.sessions[store.activeKB] = currentSessions.filter(s => s.id !== sessionId);
+      if (store.activeSessionId === sessionId) {
+        if (store.sessions[store.activeKB].length > 0) {
+          selectSession(store.sessions[store.activeKB][0].id);
+        } else {
+          createNewSession();
+        }
+      }
+      renderSessionList();
+    }
+
+    function clearAllSessions() {
+      if (confirm('确定清空当前知识库下的所有历史对话吗？')) {
+        store.sessions[store.activeKB] = [];
+        createNewSession();
+      }
+    }
+
+    // 发送消息交互模拟
+    function handleSendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const container = document.getElementById('messageContainer');
+      
+      // 追加用户消息
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex items-start justify-end gap-3 max-w-4xl ml-auto';
+      userBubble.innerHTML = `
+        <div class="bg-gradient-to-br from-brand-600 to-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm shadow-md shadow-brand-500/10 leading-relaxed max-w-xl">
+          ${text}
+        </div>
+        <div class="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+          ME
+        </div>
+      `;
+      container.appendChild(userBubble);
+      container.scrollTop = container.scrollHeight;
+
+      // 模拟 AI 打字回复
+      setTimeout(() => {
+        const aiBubble = document.createElement('div');
+        aiBubble.className = 'flex items-start gap-3 max-w-4xl';
+        aiBubble.innerHTML = `
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-lg shadow-brand-500/20">
+            AI
+          </div>
+          <div class="flex-1 space-y-2">
+            <div class="glass-panel rounded-2xl rounded-tl-sm p-5 text-sm text-slate-200 leading-relaxed space-y-2 shadow-xl">
+              <p>针对您关于<strong>“${text}”</strong>的提问，系统已完成双路混合检索与语义精排<span class="citation-badge" onclick="openCitation(1)">[1]</span>：</p>
+              <p class="text-xs text-slate-300">根据当前知识库中的最新规定，相关指标和细则已为您精准匹配。如有更多具体细节，欢迎继续追问！<span class="citation-badge" onclick="openCitation(2)">[2]</span></p>
+            </div>
+          </div>
+        `;
+        container.appendChild(aiBubble);
+        container.scrollTop = container.scrollHeight;
+      }, 500);
+    }
+
+    function sendQuickPrompt(promptText) {
+      document.getElementById('chatInput').value = promptText;
+      handleSendMessage();
+    }
+
+    // 回车发送快捷键
+    document.getElementById('chatInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+    });
+
+    // 抽屉展开与关闭
+    function openCitation(id) {
+      const drawer = document.getElementById('citationDrawer');
+      drawer.classList.remove('translate-x-full');
+      
+      const mockCitations = {
+        1: {
+          doc: '2025招生章程.docx',
+          score: '0.9624 (极高相关)',
+          index: '#chunk-008',
+          path: '招生章程 > 第三章 报考资格 > 高校专项计划条件',
+          content: '### 第三章 报考资格与实施范围\n\n第十二条 高校专项计划定向招收农村学子，要求具备当地连续3年户籍与连续3年高中学籍...'
+        },
+        2: {
+          doc: '历年录取位次表.md',
+          score: '0.9215 (高相关)',
+          index: '#chunk-014',
+          path: '投档规则 > 特殊类型招生 > 录取批次衔接',
+          content: '### 特殊类型批次录取细则\n\n高校专项计划安排在普通类提前批/特殊类型批次录取。未被录取的考生其电子档案自动转入后续平行志愿批次...'
+        },
+        3: {
+          doc: '志愿填报指南.docx',
+          score: '0.8842 (相关)',
+          index: '#chunk-003',
+          path: '填报指导 > 常见误区 > 批次落榜风险释疑',
+          content: '问：高校专项计划如果没有被录取，会影响后面的志愿吗？\n答：完全不会，不影响普通平行志愿任何高校的投档与录取。'
+        }
+      };
+
+      const c = mockCitations[id] || mockCitations[1];
+      document.getElementById('drawerDocName').innerText = c.doc;
+      document.getElementById('drawerScore').innerText = c.score;
+      document.getElementById('drawerChunkIndex').innerText = c.index;
+      document.getElementById('drawerBreadcrumb').innerHTML = c.path.split(' > ').join(' <span class="text-slate-600">&gt;</span> ');
+      document.getElementById('drawerContent').innerText = c.content;
+    }
+
+    function closeCitation() {
+      document.getElementById('citationDrawer').classList.add('translate-x-full');
+    }
+
+    function createNewKB() {
+      const name = prompt('请输入新知识库名称（英文/字母数字）：');
+      if (name && name.trim()) {
+        const select = document.getElementById('kbSelect');
+        const opt = document.createElement('option');
+        opt.value = name.trim();
+        opt.innerText = name.trim() + ' (0 切片)';
+        select.appendChild(opt);
+        select.value = opt.value;
+        switchKB(opt.value);
+      }
+    }
+
+    function clearCurrentMessages() {
+      if (confirm('确定清空当前对话中的消息记录吗？')) {
+        document.getElementById('messageContainer').innerHTML = '<div class="text-center py-12 text-slate-500 text-xs">消息已清空</div>';
+      }
+    }
+
+    function exportChat() {
+      alert('已将当前对话记录导出为 Markdown 文件！');
+    }
+
+    // 初始化渲染
+    renderSessionList();
+  </script>
+</body>
+</html>

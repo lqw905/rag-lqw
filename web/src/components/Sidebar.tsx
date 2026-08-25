@@ -93,10 +93,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     try {
       const resList = await api.uploadDocuments(selectedKB, fileArray);
       const totalChunks = resList.reduce((acc: number, curr: any) => acc + (curr.chunk_count || 0), 0);
-      setUploadMessage({
-        text: `成功导入 ${fileArray.length} 个文档，生成 ${totalChunks} 个有效切片！`,
-        type: 'success',
-      });
+      const failed = resList.filter((r: any) => (r.chunk_count || 0) === 0);
+
+      if (failed.length > 0 && totalChunks === 0) {
+        setUploadMessage({
+          text: `导入未生成有效切片：${failed.map((f: any) => f.message || '未知原因').join('; ')}`,
+          type: 'error',
+        });
+      } else if (failed.length > 0) {
+        setUploadMessage({
+          text: `部分导入成功 (${totalChunks} 切片)，但有 ${failed.length} 个文档未生成切片：${failed.map((f: any) => f.file_name + ' (' + f.message + ')').join('; ')}`,
+          type: 'error',
+        });
+      } else {
+        setUploadMessage({
+          text: `成功导入 ${fileArray.length} 个文档，生成 ${totalChunks} 个有效切片！`,
+          type: 'success',
+        });
+      }
       onRefreshKBs();
     } catch (err: any) {
       setUploadMessage({ text: err.message || '上传处理失败', type: 'error' });

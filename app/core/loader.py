@@ -93,16 +93,16 @@ class DocumentLoader:
                     continue
 
                 style_name = p.style.name.lower()
-                # 识别常见的 Heading 样式
-                if "heading 1" in style_name:
+                # 识别中英文常见的 Heading 样式
+                if "heading 1" in style_name or "标题 1" in style_name or "标题1" in style_name:
                     md_lines.append(f"\n# {text}\n")
-                elif "heading 2" in style_name:
+                elif "heading 2" in style_name or "标题 2" in style_name or "标题2" in style_name:
                     md_lines.append(f"\n## {text}\n")
-                elif "heading 3" in style_name:
+                elif "heading 3" in style_name or "标题 3" in style_name or "标题3" in style_name:
                     md_lines.append(f"\n### {text}\n")
-                elif "heading 4" in style_name:
+                elif "heading 4" in style_name or "标题 4" in style_name or "标题4" in style_name:
                     md_lines.append(f"\n#### {text}\n")
-                elif "title" in style_name:
+                elif "title" in style_name or "标题" == style_name:
                     md_lines.append(f"\n# {text}\n")
                 else:
                     md_lines.append(f"{text}\n")

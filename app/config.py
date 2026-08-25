@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,13 @@ class Settings(BaseSettings):
     EMBEDDING_API_KEY: Optional[str] = None   # If None, fallback to OPENAI_API_KEY
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: Optional[int] = None
+
+    @field_validator("EMBEDDING_DIMENSIONS", mode="before")
+    @classmethod
+    def parse_optional_int(cls, v):
+        if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+            return None
+        return int(v)
 
     # Reranker Settings
     RERANKER_BASE_URL: Optional[str] = "https://api.siliconflow.cn/v1/rerank"

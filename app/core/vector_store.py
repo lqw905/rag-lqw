@@ -42,11 +42,22 @@ class OpenAIEmbeddingFunction:
 
             try:
                 response = self.client.embeddings.create(**kwargs)
-                batch_embeddings = [data.embedding for data in response.data]
-                all_embeddings.extend(batch_embeddings)
             except Exception as e:
-                logger.error(f"Embedding API call failed: {e}")
-                raise e
+                # 若模型供应商（如硅基流动 SiliconFlow）不支持 dimensions 字段，自动降级移除参数重试
+                if "dimensions" in kwargs:
+                    logger.warning(f"Embedding API 不支持 dimensions 参数 ({e})，正在自动降级重试...")
+                    kwargs.pop("dimensions", None)
+                    try:
+                        response = self.client.embeddings.create(**kwargs)
+                    except Exception as retry_err:
+                        logger.error(f"Embedding API 降级调用失败: {retry_err}")
+                        raise retry_err
+                else:
+                    logger.error(f"Embedding API 调用失败: {e}")
+                    raise e
+
+            batch_embeddings = [data.embedding for data in response.data]
+            all_embeddings.extend(batch_embeddings)
 
         return all_embeddings
 
@@ -89,6 +100,7 @@ class ChromaVectorStore:
         if not chunks:
             return
 
+        col_name = self._get_collection_name(kb_name)
         collection = self.get_or_create_collection(kb_name)
         
         ids = [c["chunk_id"] for c in chunks]

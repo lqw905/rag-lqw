@@ -54,11 +54,33 @@ RERANKER_API_KEY=sk-your-rerank-key
 RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 ```
 
-### 3. 启动后端服务
-```bash
-.\.venv\Scripts\python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-启动后访问接口文档：[http://localhost:8000/docs](http://localhost:8000/docs)
+### 3. 一键启动服务（推荐）
+
+本项目提供了全栈一键启动脚本，会自动检测环境配置、启动 FastAPI 后端（端口 8000）与 Vite 前端（端口 5173）：
+
+- **方式一（双击或批处理）**：双击根目录下 `start.bat` 或在终端运行 `.\start.bat`
+- **方式二（PowerShell）**：`.\start.ps1`
+- **方式三（Python）**：`.\.venv\Scripts\python run.py`
+
+启动后在浏览器打开：
+- 🌐 前端交互界面：[http://localhost:5173](http://localhost:5173)
+- 📡 后端接口与文档：[http://localhost:8000/docs](http://localhost:8000/docs)
+
+*(按 `Ctrl + C` 可一键安全退出所有前后端进程)*
+
+---
+
+### 4. 手动分步启动（可选）
+
+- **启动后端**：
+  ```bash
+  .\.venv\Scripts\python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+  ```
+- **启动前端**：
+  ```bash
+  cd web
+  npm run dev
+  ```
 
 ---
 
@@ -79,3 +101,42 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 - `DELETE /api/v1/kb/{kb_name}`：删除知识库及其向量与稀疏索引
 - `POST /api/v1/retrieval/search`：检索测试接口（直接返回各路召回与重排结果）
 - `POST /api/v1/chat/completions`：RAG 智能对话问答（支持 SSE 流式传输 `stream=True`）
+
+---
+
+## 🔌 MCP (Model Context Protocol) 智能体接入
+
+本项目原生提供符合 **MCP 标准规范** 的 stdio 服务（[mcp_server.py](file:///f:/rag-project/rag-gk/mcp_server.py)），可零代码一键接入 **Cursor、Claude Desktop、Antigravity、VS Code、Cline** 等 AI 编程智能体。
+
+### 1. 提供的 MCP 工具列表
+
+- 🔍 `search_knowledge_base`：在知识库中进行混合多路召回与 BGE 语义精排，返回带面包屑和相关度得分的上下文。
+- 🤖 `ask_knowledge_base`：直接针对知识库进行端到端智能问答与引用溯源。
+- 📚 `list_knowledge_bases`：查看当前系统中所有可用知识库与切片数量。
+- 📥 `ingest_document`：从本地路径直接导入并索引 `.docx`、`.txt`、`.md` 文档。
+
+### 2. 客户端配置示例
+
+#### 接入 Cursor (`.cursor/mcp.json` 或设置中的 MCP)：
+```json
+{
+  "mcpServers": {
+    "rag-gk": {
+      "command": "f:\\rag-project\\rag-gk\\.venv\\Scripts\\python.exe",
+      "args": ["f:\\rag-project\\rag-gk\\mcp_server.py"]
+    }
+  }
+}
+```
+
+#### 接入 Claude Desktop (`claude_desktop_config.json`)：
+```json
+{
+  "mcpServers": {
+    "rag-gk": {
+      "command": "f:/rag-project/rag-gk/.venv/Scripts/python.exe",
+      "args": ["f:/rag-project/rag-gk/mcp_server.py"]
+    }
+  }
+}
+```

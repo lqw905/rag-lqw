@@ -119,6 +119,13 @@ class MarkdownHeaderSplitter:
                     "text": text_joined
                 })
 
+        # 容错兜底：若文档仅由标题组成或未提取出分段，直接将整篇文本作为一个 section
+        if not sections and markdown_text.strip():
+            sections.append({
+                "breadcrumb": get_current_breadcrumb() or "",
+                "text": markdown_text.strip()
+            })
+
         # 第二步：对每一个 section 内部，按自然段落与 Token 预算进行合并与 Overlap 处理
         chunks: List[Chunk] = []
         chunk_idx = 0

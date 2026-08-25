@@ -48,7 +48,3 @@ chroma_db/
 storage/
 *.db
 *.sqlite3
-
-# Project-specific ignored docs
-docs/
-docs

@@ -17,10 +17,18 @@ RAG-GK 是一个基于 **FastAPI + ChromaDB + BM25 + API模型** 构建的高性
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
-```bash
-pip install -r requirements.txt
-```
+### 1. 激活虚拟环境
+本项目已在根目录下创建了专属虚拟环境 `.venv`：
+- **Windows (PowerShell)**:
+  ```powershell
+  .\.venv\Scripts\Activate.ps1
+  ```
+- **Windows (CMD)**:
+  ```cmd
+  .\.venv\Scripts\activate.bat
+  ```
+
+*(若需重新安装依赖，运行 `.\.venv\Scripts\pip install -r requirements.txt`)*
 
 ### 2. 配置环境变量
 复制 `.env.example` 并重命名为 `.env`，填入你的 API 密钥：
@@ -48,7 +56,7 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 
 ### 3. 启动后端服务
 ```bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+.\.venv\Scripts\python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 启动后访问接口文档：[http://localhost:8000/docs](http://localhost:8000/docs)
 
@@ -56,7 +64,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 🧪 运行测试套件
 ```bash
-python -X utf8 -m pytest tests/test_pipeline.py -v
+.\.venv\Scripts\python -X utf8 -m pytest tests/test_pipeline.py -v
 ```
 
 ---

@@ -1,0 +1,83 @@
+@import 'highlight.js/styles/github-dark.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-brand-500/30 selection:text-brand-200 font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom modern scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
+}
+
+/* Markdown styling inside assistant bubble */
+.markdown-body {
+  @apply text-slate-200 text-sm leading-relaxed;
+}
+
+.markdown-body h1 {
+  @apply text-xl font-bold text-slate-100 mt-4 mb-2 pb-1 border-b border-slate-800;
+}
+
+.markdown-body h2 {
+  @apply text-lg font-semibold text-slate-100 mt-3 mb-2;
+}
+
+.markdown-body h3 {
+  @apply text-base font-semibold text-slate-200 mt-2 mb-1;
+}
+
+.markdown-body p {
+  @apply mb-2.5 last:mb-0;
+}
+
+.markdown-body ul {
+  @apply list-disc list-inside mb-2.5 space-y-1 text-slate-300;
+}
+
+.markdown-body ol {
+  @apply list-decimal list-inside mb-2.5 space-y-1 text-slate-300;
+}
+
+.markdown-body li {
+  @apply leading-relaxed;
+}
+
+.markdown-body table {
+  @apply w-full text-xs text-left border-collapse my-3 border border-slate-800 rounded-lg overflow-hidden;
+}
+
+.markdown-body th {
+  @apply bg-slate-800/80 px-3 py-2 text-slate-200 font-semibold border-b border-slate-700;
+}
+
+.markdown-body td {
+  @apply px-3 py-2 border-b border-slate-800/60 bg-slate-900/40;
+}
+
+.markdown-body blockquote {
+  @apply border-l-2 border-brand-500 pl-3 py-1 my-2 text-slate-400 italic bg-slate-900/30 rounded-r;
+}
+
+.markdown-body code:not(pre code) {
+  @apply px-1.5 py-0.5 bg-slate-800/90 text-brand-300 rounded font-mono text-xs border border-slate-700/50;
+}
+
+.markdown-body pre {
+  @apply my-3 rounded-xl overflow-hidden border border-slate-800/80 bg-slate-900/90 shadow-xl;
+}

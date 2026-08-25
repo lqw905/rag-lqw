@@ -1,24 +1,37 @@
-# RAG-GK: 轻量级可信知识库问答系统
+# 🚀 RAG-LQW: 轻量级企业级混合检索知识库问答系统
 
-RAG-GK 是一个基于 **FastAPI + ChromaDB + BM25 + API模型** 构建的高性能、极简架构 RAG 知识库问答后端。
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?logo=python&logoColor=white" alt="Python Version" />
+  <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-18.3+-61DAFB?logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-5.0+-646CFF?logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/ChromaDB-VectorStore-orange" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/MCP-Protocol%20Ready-purple" alt="MCP Ready" />
+</p>
+
+> **RAG-LQW** 是一个基于 **FastAPI + React 18 + ChromaDB + BM25 + Cross-Encoder Reranker** 构建的高性能、极简架构 RAG 知识库问答系统，支持智能标题层级切片、多会话隔离管理、交互式引用溯源与原生 MCP Server 协议。
+
+---
 
 ## 🌟 核心特色
 
-1. **统一文档解析**：支持 `.docx`、`.txt`、`.md` 毫秒级文本解析，自动提取 Word 标题层级和表格为标准 Markdown 结构。
-2. **结构化标题切片**：自适应段落 Token 预算切片，自动在每个分块前注入父级标题面包屑路径（如 `[上下文: 部署 > 环境要求]`），确保语义不丢失。
+1. **统一文档结构化解析**：支持 `.docx`、`.txt`、`.md` 毫秒级文本解析，自动提取 Word 标题层级和表格为标准 Markdown 结构。
+2. **标题面包屑智能切片**：自适应段落 Token 预算切片，自动在每个分块前注入父级标题面包屑路径（如 `[上下文: 部署 > 环境要求]`），彻底消除上下文断裂。
 3. **混合多路召回 + RRF 融合**：
    - **Dense 向量检索**：基于 ChromaDB 持久化向量库与余弦相似度检索；
    - **Sparse 稀疏检索**：基于 BM25Plus 算法与 Jieba 中文分词检索专有名词与精确匹配；
    - **RRF 融合**：自动融合双路排名，筛选出 Top-20 高价值候选。
-4. **Cross-Encoder 语义精排**：支持接入 SiliconFlow / BGE / Jina Rerank API，对候选块进行深度打分筛选出 Top-5。
-5. **流式问答与精准引用溯源**：在回答中自动插入 `[1]`、`[2]` 角标，并流式输出详细的引用来源元数据（文档名、标题路径、相关度得分、原文片段）。
+4. **Cross-Encoder 语义精排 & 噪音过滤**：集成 BGE-Reranker API 对候选块深度打分，前置意图识别过滤闲聊，置信度及格线剔除无关噪音。
+5. **多知识库独立多会话管理**：三栏式现代化 UI，知识库与会话独立隔离，支持新建、搜索、编辑重命名、删除及 `localStorage` 本地持久化。
+6. **交互式引用溯源**：在回答中自动插入 `[1]`、`[2]` 可点击角标，右侧滑出抽屉一键定位原文切片。
+7. **原生 MCP Server 协议支持**：符合 Model Context Protocol 标准，无缝作为 Tool 接入 Cursor、Claude Desktop、Antigravity 等智能体。
 
 ---
 
 ## 🚀 快速开始
 
 ### 1. 激活虚拟环境
-本项目已在根目录下创建了专属虚拟环境 `.venv`：
+本项目在根目录下内置了虚拟环境 `.venv`：
 - **Windows (PowerShell)**:
   ```powershell
   .\.venv\Scripts\Activate.ps1
@@ -28,7 +41,7 @@ RAG-GK 是一个基于 **FastAPI + ChromaDB + BM25 + API模型** 构建的高性
   .\.venv\Scripts\activate.bat
   ```
 
-*(若需重新安装依赖，运行 `.\.venv\Scripts\pip install -r requirements.txt`)*
+*(若需在全新环境安装依赖，运行 `pip install -r requirements.txt`)*
 
 ### 2. 配置环境变量
 复制 `.env.example` 并重命名为 `.env`，填入你的 API 密钥：
@@ -36,21 +49,21 @@ RAG-GK 是一个基于 **FastAPI + ChromaDB + BM25 + API模型** 构建的高性
 cp .env.example .env
 ```
 
-配置示例：
+配置示例（以 SiliconFlow 为例）：
 ```ini
 # LLM API 配置 (兼容 OpenAI / DeepSeek / 通义千问 / SiliconFlow)
-OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_BASE_URL=https://api.siliconflow.cn/v1
 OPENAI_API_KEY=sk-your-key
-LLM_MODEL=deepseek-chat
+LLM_MODEL=deepseek-ai/DeepSeek-V3
 
 # Embedding API 配置
-EMBEDDING_BASE_URL=https://api.openai.com/v1
-EMBEDDING_API_KEY=sk-your-embedding-key
-EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1
+EMBEDDING_API_KEY=sk-your-key
+EMBEDDING_MODEL=BAAI/bge-m3
 
 # Reranker API 配置 (可选，留空则自动降级为 RRF 得分排序)
 RERANKER_BASE_URL=https://api.siliconflow.cn/v1/rerank
-RERANKER_API_KEY=sk-your-rerank-key
+RERANKER_API_KEY=sk-your-key
 RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 ```
 
@@ -60,7 +73,7 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 
 - **方式一（双击或批处理）**：双击根目录下 `start.bat` 或在终端运行 `.\start.bat`
 - **方式二（PowerShell）**：`.\start.ps1`
-- **方式三（Python）**：`.\.venv\Scripts\python run.py`
+- **方式三（Python）**：`python run.py`
 
 启动后在浏览器打开：
 - 🌐 前端交互界面：[http://localhost:5173](http://localhost:5173)
@@ -79,6 +92,7 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 - **启动前端**：
   ```bash
   cd web
+  npm install
   npm run dev
   ```
 
@@ -106,7 +120,7 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 
 ## 🔌 MCP (Model Context Protocol) 智能体接入
 
-本项目原生提供符合 **MCP 标准规范** 的 stdio 服务（[mcp_server.py](file:///f:/rag-project/rag-gk/mcp_server.py)），可零代码一键接入 **Cursor、Claude Desktop、Antigravity、VS Code、Cline** 等 AI 编程智能体。
+本项目原生提供符合 **MCP 标准规范** 的 stdio 服务（`mcp_server.py`），可零代码一键接入 **Cursor、Claude Desktop、Antigravity、VS Code、Cline** 等 AI 编程智能体。
 
 ### 1. 提供的 MCP 工具列表
 
@@ -121,9 +135,9 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 ```json
 {
   "mcpServers": {
-    "rag-gk": {
-      "command": "f:\\rag-project\\rag-gk\\.venv\\Scripts\\python.exe",
-      "args": ["f:\\rag-project\\rag-gk\\mcp_server.py"]
+    "rag-lqw": {
+      "command": "python",
+      "args": ["F:\\rag-project\\rag-gk\\mcp_server.py"]
     }
   }
 }
@@ -133,10 +147,15 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 ```json
 {
   "mcpServers": {
-    "rag-gk": {
-      "command": "f:/rag-project/rag-gk/.venv/Scripts/python.exe",
-      "args": ["f:/rag-project/rag-gk/mcp_server.py"]
+    "rag-lqw": {
+      "command": "python",
+      "args": ["F:/rag-project/rag-gk/mcp_server.py"]
     }
   }
 }
 ```
+
+---
+
+## 📄 开源许可证
+MIT License.

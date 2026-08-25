@@ -62,7 +62,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, healthI
         </div>
         <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
           <Database className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="text-[11px]">BGE-M3 + BM25</span>
+          <span className="text-slate-400">存储:</span>
+          <span className="text-[11px] font-mono text-slate-200">ChromaDB + BM25</span>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

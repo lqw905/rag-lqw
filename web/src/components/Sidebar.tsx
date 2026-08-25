@@ -162,24 +162,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Current KB Stats & Actions */}
         {currentKB && (
-          <div className="mt-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs">
-            <div>
-              <span className="text-slate-400">已索引分块：</span>
-              <span className="font-semibold text-brand-400 ml-1">{currentKB.chunk_count} 块</span>
+          <div className="mt-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-medium">已索引分块</span>
+              <span className="text-xs font-bold text-brand-400 font-mono bg-brand-500/10 px-2 py-0.5 rounded-md border border-brand-500/20">
+                {currentKB.chunk_count} 块
+              </span>
             </div>
-            <div className="flex items-center gap-1.5">
+
+            <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/50">
               <button
                 onClick={onOpenChunkModal}
                 disabled={currentKB.chunk_count === 0}
-                className="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-300 flex items-center gap-1 transition-colors"
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 text-xs font-medium flex items-center justify-center gap-1.5 transition-all border border-slate-700/50 hover:border-brand-500/40"
                 title="查看该知识库的切片与面包屑结构"
               >
-                <Layers className="w-3 h-3 text-brand-400" />
-                切片预览
+                <Layers className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" />
+                <span className="whitespace-nowrap">切片预览</span>
               </button>
               <button
                 onClick={() => handleDeleteKB(currentKB.kb_name)}
-                className="p-1 rounded-md hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors border border-transparent hover:border-rose-500/30 flex items-center justify-center flex-shrink-0"
                 title="删除此知识库"
               >
                 <Trash2 className="w-3.5 h-3.5" />

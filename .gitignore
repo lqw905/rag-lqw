@@ -48,3 +48,9 @@ chroma_db/
 storage/
 *.db
 *.sqlite3
+
+# Frontend build & dependencies
+node_modules/
+web/node_modules/
+web/dist/
+*.log

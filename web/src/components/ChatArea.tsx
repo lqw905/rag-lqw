@@ -439,9 +439,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                             )}
                           </button>
                         </div>
-                        <span className="font-mono text-[11px]">
-                          {message.isStreaming ? '正在生成中...' : '已完成'}
-                        </span>
+                        {message.isStreaming && (
+                          <span className="font-mono text-[11px] text-ink-500 animate-pulse">
+                            正在生成中...
+                          </span>
+                        )}
                       </div>
 
                     </div>

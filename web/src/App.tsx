@@ -135,6 +135,15 @@ export const App: React.FC = () => {
   // Create a new session
   const handleCreateSession = (kbName: string = selectedKB) => {
     if (!kbName) return;
+
+    // 如果当前知识库已经有一个空对话（没有消息），直接切换过去，不再新建
+    const existingEmptySession = sessions.find((s) => s.kb_name === kbName && s.messages.length === 0);
+    if (existingEmptySession) {
+      setActiveSessionId(existingEmptySession.id);
+      setIsCitationOpen(false);
+      return;
+    }
+
     const newSessionId = 'session-' + Date.now();
     const newSession: ChatSession = {
       id: newSessionId,

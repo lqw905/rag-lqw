@@ -253,15 +253,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* 会话搜索框 */}
-          <div className="relative pt-1">
-            <input
-              type="text"
-              value={sessionSearch}
-              onChange={(e) => setSessionSearch(e.target.value)}
-              placeholder="搜索研读历史..."
-              className="w-full bg-surface border border-border text-xs text-ink-900 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
-            />
-            <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2.5 top-3 -translate-y-1/2" />
+          <div className="pt-1">
+            <div className="relative flex items-center">
+              <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2.5 pointer-events-none" />
+              <input
+                type="text"
+                value={sessionSearch}
+                onChange={(e) => setSessionSearch(e.target.value)}
+                placeholder="搜索研读历史..."
+                className="w-full bg-surface border border-border text-xs text-ink-900 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
+              />
+            </div>
           </div>
 
         </div>

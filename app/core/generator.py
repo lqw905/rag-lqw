@@ -139,7 +139,8 @@ class RAGGenerator:
                     if delta and delta.content:
                         delta_event = {
                             "type": "delta",
-                            "delta": delta.content
+                            "delta": delta.content,
+                            "content": delta.content
                         }
                         yield f"data: {json.dumps(delta_event, ensure_ascii=False)}\n\n"
 
@@ -151,7 +152,8 @@ class RAGGenerator:
             logger.error(f"LLM streaming generation failed: {e}")
             err_event = {
                 "type": "error",
-                "error": str(e)
+                "error": str(e),
+                "message": str(e)
             }
             yield f"data: {json.dumps(err_event, ensure_ascii=False)}\n\n"
 

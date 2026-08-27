@@ -148,12 +148,12 @@ export const api = {
             const event = JSON.parse(jsonStr);
             if (event.type === 'references') {
               params.onReferences(event.references || []);
-            } else if (event.type === 'content') {
-              params.onDelta(event.delta || '');
+            } else if (event.type === 'content' || event.type === 'delta') {
+              params.onDelta(event.delta || event.content || '');
             } else if (event.type === 'done') {
               params.onDone(event.total_tokens);
             } else if (event.type === 'error') {
-              params.onError(event.message || 'LLM 生成错误');
+              params.onError(event.message || event.error || 'LLM 生成错误');
             }
           } catch (e) {
             console.warn('Failed to parse SSE line:', jsonStr, e);

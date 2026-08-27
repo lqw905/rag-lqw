@@ -393,14 +393,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     <div className="bg-surface border border-border rounded-xl p-6 shadow-card space-y-4">
                       
                       {/* 顶部事实溯源横条 */}
-                      <div className="flex items-center justify-between pb-3.5 border-b border-border text-xs">
-                        <div className="flex items-center space-x-2 text-ink-700">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                          <span className="font-medium">
-                            {hasRefs ? '已依据私域文档精准检索确认' : '通用逻辑回应'}
-                          </span>
-                        </div>
-                        {hasRefs && (
+                      {hasRefs && (
+                        <div className="flex items-center justify-between pb-3.5 border-b border-border text-xs">
+                          <div className="flex items-center space-x-2 text-ink-700">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span className="font-medium">
+                              已依据私域文档精准检索确认
+                            </span>
+                          </div>
                           <button
                             onClick={() => onOpenCitation(message.references![0].ref_id, message.references)}
                             className="flex items-center space-x-1 text-xs font-semibold text-ink-900 hover:text-stone-600 transition-colors cursor-pointer"
@@ -408,8 +408,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                             <span>查看 {message.references!.length} 处引用源</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Markdown 正文 */}
                       <div className="markdown-body">

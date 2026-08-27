@@ -366,10 +366,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <button
                   key={idx}
                   onClick={() => onSendMessage(q)}
-                  className="p-4 sm:p-5 rounded-xl bg-surface border border-border hover:border-stone-400 text-xs font-medium text-ink-900 hover:text-ink-900 transition-all shadow-card hover:shadow-float flex items-start justify-between group text-left min-h-[110px]"
+                  className="p-3 sm:p-4 rounded-xl bg-surface border border-border hover:border-stone-400 text-xs font-medium text-ink-900 hover:text-ink-900 transition-all shadow-card hover:shadow-float flex items-center justify-between group text-left"
                 >
                   <span className="leading-relaxed pr-2">{q}</span>
-                  <ArrowUpRight className="w-4 h-4 text-ink-400 group-hover:text-ink-900 flex-shrink-0 mt-0.5 transition-colors" />
+                  <ArrowUpRight className="w-4 h-4 text-ink-400 group-hover:text-ink-900 flex-shrink-0 transition-colors" />
                 </button>
               ))}
             </div>

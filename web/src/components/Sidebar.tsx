@@ -11,7 +11,8 @@ import {
   MessageSquare,
   Edit3,
   Search,
-  X
+  X,
+  PanelLeftClose
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -29,6 +30,10 @@ interface SidebarProps {
   onRenameSession: (id: string, newTitle: string) => void;
   onDeleteSession: (id: string) => void;
   onClearSessions: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  width?: number;
+  onWidthChange?: (newWidth: number) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -44,6 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRenameSession,
   onDeleteSession,
   onClearSessions,
+  isCollapsed = false,
+  onToggleCollapse,
+  width = 288,
+  onWidthChange,
 }) => {
   // KB Manager Modal State
   const [isKBModalOpen, setIsKBModalOpen] = useState(false);
@@ -60,19 +69,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
+  // Drag Resizing State
+  const isResizingRef = useRef(false);
+
   const currentKB = knowledgeBases.find((k) => k.kb_name === selectedKB);
 
-  // Global shortcut: ⌘K or Ctrl+K to create a new session
+  // Global shortcut: ⌘K or Ctrl+K to create a new session; ⌘B or Ctrl+B to toggle sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         onCreateSession();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b' && onToggleCollapse) {
+        e.preventDefault();
+        onToggleCollapse();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCreateSession]);
+  }, [onCreateSession, onToggleCollapse]);
+
+  // Handle Drag Resizing
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingRef.current || !onWidthChange) return;
+      onWidthChange(moveEvent.clientX);
+    };
+
+    const onMouseUp = () => {
+      isResizingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   // Filter sessions
   const filteredSessions = useMemo(() => {
@@ -189,27 +229,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setEditingSessionId(null);
   };
 
+  if (isCollapsed) {
+    return null;
+  }
+
   return (
     <>
-      <aside className="w-72 bg-paper border-r border-border flex flex-col justify-between select-none flex-shrink-0 z-20 h-[calc(100vh-3.5rem)]">
+      <aside 
+        style={{ width: `${width}px` }}
+        className="relative bg-paper border-r border-border flex flex-col justify-between select-none flex-shrink-0 z-20 h-[calc(100vh-3.5rem)] transition-all duration-75"
+      >
         
         {/* 顶部区域：新建对话与知识库卡片 */}
         <div className="p-4 space-y-4">
           
-          {/* 新建研读对话主按钮 */}
-          <button
-            onClick={onCreateSession}
-            className="w-full bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between shadow-card hover:border-stone-400 transition-all group"
-          >
-            <span className="flex items-center space-x-2">
-              <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
-              <span>新建研读对话</span>
-            </span>
-            <kbd className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
-          </button>
+          {/* 新建研读对话主按钮与收起按钮 */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onCreateSession}
+              className="flex-1 bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between shadow-card hover:border-stone-400 transition-all group"
+            >
+              <span className="flex items-center space-x-2">
+                <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
+                <span>新建研读对话</span>
+              </span>
+              <kbd className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
+            </button>
+
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="p-2 rounded-xl bg-surface hover:bg-subtle border border-border text-ink-400 hover:text-ink-900 shadow-card transition-colors flex-shrink-0"
+                title="收起左侧栏 (Ctrl+B)"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
           {/* 挂载知识库卡片 */}
-          <div className="pt-2">
+          <div className="pt-1">
             <div className="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
               <span>挂载知识库</span>
               <button 
@@ -350,6 +409,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[11px] font-mono text-ink-500">v1.2.0</span>
           </div>
         </div>
+
+        {/* 侧边拖拽调节宽度把手 (Resizable Drag Handle) */}
+        {onWidthChange && (
+          <div
+            onMouseDown={handleMouseDown}
+            className="absolute -right-1 top-0 bottom-0 w-2.5 cursor-col-resize hover:bg-stone-400/30 active:bg-stone-900/40 transition-colors z-30 group flex items-center justify-center"
+            title="左右拖拽调节侧边栏宽度"
+          >
+            <div className="w-0.5 h-6 bg-stone-300 group-hover:bg-stone-600 rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+          </div>
+        )}
       </aside>
 
       {/* ========================================================================= */}

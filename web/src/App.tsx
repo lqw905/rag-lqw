@@ -9,12 +9,54 @@ import type { KnowledgeBase, ChatSession, ChatMessage, ReferenceItem, HealthInfo
 import { api } from './services/api';
 
 const STORAGE_KEY = 'rag_gk_sessions_v1';
+const SIDEBAR_COLLAPSED_KEY = 'rag_sidebar_collapsed';
+const SIDEBAR_WIDTH_KEY = 'rag_sidebar_width';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'playground'>('chat');
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [selectedKB, setSelectedKB] = useState<string>('');
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
+
+  // Sidebar Collapsible & Resizable State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+      return saved ? Math.max(220, Math.min(480, parseInt(saved, 10))) : 288;
+    } catch {
+      return 288;
+    }
+  });
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  const handleWidthChange = (newWidth: number) => {
+    const clamped = Math.max(220, Math.min(480, newWidth));
+    setSidebarWidth(clamped);
+    try {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Multi-Session State (Persisted in localStorage)
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
@@ -307,12 +349,14 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         healthInfo={healthInfo}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={handleToggleSidebar}
       />
 
       {/* 主体两栏/三栏布局 (单侧边栏 + 主内容区 + 侧滑抽屉) */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* 左侧收紧为极简统一单栏 (288px) */}
+        {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 */}
         <Sidebar
           knowledgeBases={knowledgeBases}
           selectedKB={selectedKB}
@@ -335,6 +379,10 @@ export const App: React.FC = () => {
           onRenameSession={handleRenameSession}
           onDeleteSession={handleDeleteSession}
           onClearSessions={handleClearSessionsForKB}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+          width={sidebarWidth}
+          onWidthChange={handleWidthChange}
         />
 
         {/* 右侧：主对话交互区 或 检索对比 Playground */}

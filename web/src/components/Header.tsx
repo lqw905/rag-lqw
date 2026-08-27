@@ -1,18 +1,36 @@
 import React from 'react';
-import { BookOpen, Sparkles, Database, Search, Cpu } from 'lucide-react';
+import { BookOpen, Sparkles, Database, Search, Cpu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { HealthInfo } from '../types';
 
 interface HeaderProps {
   activeTab: 'chat' | 'playground';
   setActiveTab: (tab: 'chat' | 'playground') => void;
   healthInfo: HealthInfo | null;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, healthInfo }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  activeTab, 
+  setActiveTab, 
+  healthInfo,
+  isSidebarCollapsed = false,
+  onToggleSidebar
+}) => {
   return (
-    <header className="h-14 border-b border-border bg-paper/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30 relative select-none">
-      {/* Brand Logo & Name (Left) */}
+    <header className="h-14 border-b border-border bg-paper/80 backdrop-blur-md px-5 flex items-center justify-between sticky top-0 z-30 relative select-none">
+      {/* Brand Logo, Toggle & Name (Left) */}
       <div className="flex items-center gap-3">
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="p-1.5 rounded-lg hover:bg-subtle text-ink-500 hover:text-ink-900 transition-colors border border-border/60 hover:border-border shadow-card mr-0.5"
+            title={isSidebarCollapsed ? "展开左侧栏 (Ctrl+B)" : "收起左侧栏 (Ctrl+B)"}
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
+        )}
+
         <div className="w-8 h-8 rounded-lg bg-ink-900 flex items-center justify-center text-white shadow-sm">
           <BookOpen className="w-4 h-4 text-white" />
         </div>

@@ -257,14 +257,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {currentKB ? (
-              <div 
-                onClick={() => setIsKBModalOpen(true)}
-                className="bg-surface border border-border hover:border-stone-400 rounded-xl px-3 py-2 shadow-card cursor-pointer transition-all group"
-              >
+              <div className="bg-surface border border-border rounded-xl px-3 py-2 shadow-card transition-all">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 truncate">
                     <span className="w-2 h-2 rounded-full bg-emerald-600 flex-shrink-0"></span>
-                    <span className="text-xs font-semibold text-ink-900 truncate group-hover:text-stone-700">
+                    <span className="text-xs font-semibold text-ink-900 truncate">
                       {currentKB.kb_name}
                     </span>
                   </div>

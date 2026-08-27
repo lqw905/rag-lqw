@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
-import { SessionList } from './components/SessionList';
 import { ChatArea } from './components/ChatArea';
 import { CitationDrawer } from './components/CitationDrawer';
 import { ChunkModal } from './components/ChunkModal';
@@ -98,7 +97,7 @@ export const App: React.FC = () => {
     const newSession: ChatSession = {
       id: newSessionId,
       kb_name: kbName,
-      title: '新对话 ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      title: '新研读 ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       created_at: Date.now(),
       updated_at: Date.now(),
       messages: [],
@@ -118,7 +117,7 @@ export const App: React.FC = () => {
 
   // Delete a session
   const handleDeleteSession = (sessionId: string) => {
-    if (!confirm('确定要删除此对话记录吗？')) return;
+    if (!confirm('确定要删除此研读记录吗？')) return;
     setSessions((prev) => {
       const remaining = prev.filter((s) => s.id !== sessionId);
       const remainingKB = remaining.filter((s) => s.kb_name === selectedKB);
@@ -136,7 +135,7 @@ export const App: React.FC = () => {
 
   // Clear all sessions for current KB
   const handleClearSessionsForKB = () => {
-    if (!confirm(`确定清空知识库 "${selectedKB}" 下的所有对话记录吗？`)) return;
+    if (!confirm(`确定清空知识库 "${selectedKB}" 下的所有研读记录吗？`)) return;
     setSessions((prev) => prev.filter((s) => s.kb_name !== selectedKB));
     setTimeout(() => handleCreateSession(selectedKB), 0);
   };
@@ -178,9 +177,9 @@ export const App: React.FC = () => {
     };
 
     // Auto-rename session if it's the first message
-    const autoTitle = isFirstMessage && currentSession?.title.startsWith('新对话')
+    const autoTitle = isFirstMessage && (currentSession?.title.startsWith('新对话') || currentSession?.title.startsWith('新研读'))
       ? query.slice(0, 20) + (query.length > 20 ? '...' : '')
-      : currentSession?.title || '对话';
+      : currentSession?.title || '研读对话';
 
     // Update session state with user message + empty assistant placeholder
     setSessions((prev) =>
@@ -302,40 +301,35 @@ export const App: React.FC = () => {
         healthInfo={healthInfo}
       />
 
-      {/* 主体三栏布局 */}
+      {/* 主体两栏/三栏布局 (单侧边栏 + 主内容区 + 侧滑抽屉) */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 一栏：知识库管理侧边栏 (256px) */}
+        
+        {/* 左侧收紧为极简统一单栏 (288px) */}
         <Sidebar
           knowledgeBases={knowledgeBases}
           selectedKB={selectedKB}
           onSelectKB={(kb) => setSelectedKB(kb)}
           onRefreshKBs={loadKBs}
           onOpenChunkModal={() => setIsChunkModalOpen(true)}
+          sessions={currentKBSessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={(id) => {
+            setActiveSessionId(id);
+            const target = sessions.find((s) => s.id === id);
+            if (target && target.messages.length > 0) {
+              const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
+              if (lastAssistant && lastAssistant.references) {
+                setActiveReferences(lastAssistant.references);
+              }
+            }
+          }}
+          onCreateSession={() => handleCreateSession(selectedKB)}
+          onRenameSession={handleRenameSession}
+          onDeleteSession={handleDeleteSession}
+          onClearSessions={handleClearSessionsForKB}
         />
 
-        {/* 二栏：会话列表管理 (260px) */}
-        {activeTab === 'chat' && (
-          <SessionList
-            sessions={currentKBSessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={(id) => {
-              setActiveSessionId(id);
-              const target = sessions.find((s) => s.id === id);
-              if (target && target.messages.length > 0) {
-                const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
-                if (lastAssistant && lastAssistant.references) {
-                  setActiveReferences(lastAssistant.references);
-                }
-              }
-            }}
-            onCreateSession={() => handleCreateSession(selectedKB)}
-            onRenameSession={handleRenameSession}
-            onDeleteSession={handleDeleteSession}
-            onClearSessions={handleClearSessionsForKB}
-          />
-        )}
-
-        {/* 三栏：主对话交互区 或 检索对比 Playground */}
+        {/* 右侧：主对话交互区 或 检索对比 Playground */}
         {activeTab === 'chat' ? (
           <ChatArea
             messages={activeSession ? activeSession.messages : []}

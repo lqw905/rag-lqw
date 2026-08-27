@@ -287,7 +287,15 @@ export const App: React.FC = () => {
     setIsStreaming(false);
   };
 
-  const handleOpenCitation = (refId: number) => {
+  const handleOpenCitation = (refId: number, refs?: ReferenceItem[]) => {
+    if (refs && refs.length > 0) {
+      setActiveReferences(refs);
+    } else if (activeReferences.length === 0 && activeSession) {
+      const msgWithRefs = [...activeSession.messages].reverse().find((m) => m.references && m.references.length > 0);
+      if (msgWithRefs?.references) {
+        setActiveReferences(msgWithRefs.references);
+      }
+    }
     setActiveRefId(refId);
     setIsCitationOpen(true);
   };

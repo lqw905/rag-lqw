@@ -15,7 +15,7 @@ import {
   ArrowUpRight,
   StopCircle
 } from 'lucide-react';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, ReferenceItem } from '../types';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -25,7 +25,7 @@ interface ChatAreaProps {
   onSendMessage: (query: string) => void;
   onStopGeneration: () => void;
   onClearMessages: () => void;
-  onOpenCitation: (refId: number) => void;
+  onOpenCitation: (refId: number, references?: ReferenceItem[]) => void;
   onRenameSession?: (newTitle: string) => void;
 }
 
@@ -109,17 +109,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const renderMessageContent = (content: string) => {
+  const renderMessageContent = (content: string, references?: ReferenceItem[]) => {
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
           p: ({ children }) => (
-            <p className="leading-relaxed mb-3 last:mb-0 text-ink-900">{renderChildrenWithCitations(children)}</p>
+            <p className="leading-relaxed mb-3 last:mb-0 text-ink-900">{renderChildrenWithCitations(children, references)}</p>
           ),
           li: ({ children }) => (
-            <li className="leading-relaxed text-ink-900">{renderChildrenWithCitations(children)}</li>
+            <li className="leading-relaxed text-ink-900">{renderChildrenWithCitations(children, references)}</li>
           ),
         }}
       >
@@ -128,7 +128,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     );
   };
 
-  const renderChildrenWithCitations = (children: React.ReactNode): React.ReactNode => {
+  const renderChildrenWithCitations = (children: React.ReactNode, references?: ReferenceItem[]): React.ReactNode => {
     if (typeof children === 'string') {
       const parts = children.split(/(\[\d+\])/g);
       return parts.map((part, index) => {
@@ -138,7 +138,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           return (
             <span
               key={index}
-              onClick={() => onOpenCitation(refId)}
+              onClick={() => onOpenCitation(refId, references)}
               className="footnote-pill"
               title={`查看参考引用 [${refId}] 的原文与定位`}
             >
@@ -152,7 +152,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
     if (Array.isArray(children)) {
       return children.map((child, i) => (
-        <React.Fragment key={i}>{renderChildrenWithCitations(child)}</React.Fragment>
+        <React.Fragment key={i}>{renderChildrenWithCitations(child, references)}</React.Fragment>
       ));
     }
 
@@ -295,8 +295,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         </div>
                         {hasRefs && (
                           <button
-                            onClick={() => onOpenCitation(message.references![0].ref_id)}
-                            className="flex items-center space-x-1 text-xs font-semibold text-ink-900 hover:text-stone-600 transition-colors"
+                            onClick={() => onOpenCitation(message.references![0].ref_id, message.references)}
+                            className="flex items-center space-x-1 text-xs font-semibold text-ink-900 hover:text-stone-600 transition-colors cursor-pointer"
                           >
                             <span>查看 {message.references!.length} 处引用源</span>
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -306,7 +306,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                       {/* Markdown 正文 */}
                       <div className="markdown-body">
-                        {renderMessageContent(message.content)}
+                        {renderMessageContent(message.content, message.references)}
                         {message.isStreaming && (
                           <span className="inline-block w-2 h-4 bg-ink-900 animate-pulse ml-1 align-middle" />
                         )}

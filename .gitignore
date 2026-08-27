@@ -46,6 +46,7 @@ venv.bak/
 data/
 chroma_db/
 storage/
+private_knowledge/
 *.db
 *.sqlite3
 

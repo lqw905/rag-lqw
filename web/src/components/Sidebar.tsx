@@ -11,8 +11,7 @@ import {
   MessageSquare,
   Edit3,
   Search,
-  X,
-  PanelLeftClose
+  X
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -243,29 +242,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* 顶部区域：新建对话与知识库卡片 */}
         <div className="p-4 space-y-4">
           
-          {/* 新建研读对话主按钮与收起按钮 */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={onCreateSession}
-              className="flex-1 bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between shadow-card hover:border-stone-400 transition-all group"
-            >
-              <span className="flex items-center space-x-2">
-                <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
-                <span>新建研读对话</span>
-              </span>
-              <kbd className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
-            </button>
-
-            {onToggleCollapse && (
-              <button
-                onClick={onToggleCollapse}
-                className="p-2 rounded-xl bg-surface hover:bg-subtle border border-border text-ink-400 hover:text-ink-900 shadow-card transition-colors flex-shrink-0"
-                title="收起左侧栏 (Ctrl+B)"
-              >
-                <PanelLeftClose className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          {/* 新建研读对话主按钮 */}
+          <button
+            onClick={onCreateSession}
+            className="w-full bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between shadow-card hover:border-stone-400 transition-all group"
+          >
+            <span className="flex items-center space-x-2">
+              <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
+              <span>新建研读对话</span>
+            </span>
+            <kbd className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
+          </button>
 
           {/* 挂载知识库卡片 */}
           <div className="pt-1">

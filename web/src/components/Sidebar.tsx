@@ -394,14 +394,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* 侧边拖拽调节宽度把手 (Resizable Drag Handle) */}
+        {/* 侧边隐形极细调节把手 (Delicate Hairline Resizer) */}
         {onWidthChange && (
           <div
             onMouseDown={handleMouseDown}
-            className="absolute -right-1 top-0 bottom-0 w-2.5 cursor-col-resize hover:bg-stone-400/30 active:bg-stone-900/40 transition-colors z-30 group flex items-center justify-center"
+            className="absolute -right-[3px] top-0 bottom-0 w-[6px] cursor-col-resize z-30 group"
             title="左右拖拽调节侧边栏宽度"
           >
-            <div className="w-0.5 h-6 bg-stone-300 group-hover:bg-stone-600 rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+            <div className="w-[1.5px] h-full mx-auto opacity-0 group-hover:opacity-100 group-active:opacity-100 bg-stone-400/60 transition-opacity duration-150" />
           </div>
         )}
       </aside>

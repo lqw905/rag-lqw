@@ -350,40 +350,42 @@ export const App: React.FC = () => {
         setActiveTab={setActiveTab}
         healthInfo={healthInfo}
         isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={handleToggleSidebar}
+        onToggleSidebar={activeTab === 'chat' ? handleToggleSidebar : undefined}
       />
 
       {/* 主体两栏/三栏布局 (单侧边栏 + 主内容区 + 侧滑抽屉) */}
       <div className="flex-1 flex overflow-hidden">
         
         {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 */}
-        <Sidebar
-          knowledgeBases={knowledgeBases}
-          selectedKB={selectedKB}
-          onSelectKB={(kb) => setSelectedKB(kb)}
-          onRefreshKBs={loadKBs}
-          onOpenChunkModal={() => setIsChunkModalOpen(true)}
-          sessions={currentKBSessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={(id) => {
-            setActiveSessionId(id);
-            const target = sessions.find((s) => s.id === id);
-            if (target && target.messages.length > 0) {
-              const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
-              if (lastAssistant && lastAssistant.references) {
-                setActiveReferences(lastAssistant.references);
+        {activeTab === 'chat' && (
+          <Sidebar
+            knowledgeBases={knowledgeBases}
+            selectedKB={selectedKB}
+            onSelectKB={(kb) => setSelectedKB(kb)}
+            onRefreshKBs={loadKBs}
+            onOpenChunkModal={() => setIsChunkModalOpen(true)}
+            sessions={currentKBSessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={(id) => {
+              setActiveSessionId(id);
+              const target = sessions.find((s) => s.id === id);
+              if (target && target.messages.length > 0) {
+                const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
+                if (lastAssistant && lastAssistant.references) {
+                  setActiveReferences(lastAssistant.references);
+                }
               }
-            }
-          }}
-          onCreateSession={() => handleCreateSession(selectedKB)}
-          onRenameSession={handleRenameSession}
-          onDeleteSession={handleDeleteSession}
-          onClearSessions={handleClearSessionsForKB}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={handleToggleSidebar}
-          width={sidebarWidth}
-          onWidthChange={handleWidthChange}
-        />
+            }}
+            onCreateSession={() => handleCreateSession(selectedKB)}
+            onRenameSession={handleRenameSession}
+            onDeleteSession={handleDeleteSession}
+            onClearSessions={handleClearSessionsForKB}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={handleToggleSidebar}
+            width={sidebarWidth}
+            onWidthChange={handleWidthChange}
+          />
+        )}
 
         {/* 右侧：主对话交互区 或 检索对比 Playground */}
         {activeTab === 'chat' ? (

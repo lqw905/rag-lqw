@@ -21,24 +21,24 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="h-12 border-b border-border bg-paper/80 backdrop-blur-md px-5 flex items-center justify-between sticky top-0 z-30 relative select-none">
       {/* Brand Logo, Toggle & Name (Left) */}
       <div className="flex items-center gap-3">
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-1.5 rounded-lg hover:bg-subtle text-ink-500 hover:text-ink-900 transition-colors border border-border/60 hover:border-border shadow-card mr-0.5"
-            title={isSidebarCollapsed ? "展开左侧栏 (Ctrl+B)" : "收起左侧栏 (Ctrl+B)"}
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
-        )}
-
         <div className="w-8 h-8 rounded-lg bg-ink-900 flex items-center justify-center text-white shadow-sm">
           <BookOpen className="w-4 h-4 text-white" />
         </div>
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-sm text-ink-900 tracking-tight">RAG Studio</span>
+            <span className="font-semibold text-sm text-ink-900 tracking-tight pr-1">RAG Studio</span>
           </div>
         </div>
+
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="p-1.5 rounded-lg hover:bg-subtle text-ink-500 hover:text-ink-900 transition-colors border border-border/60 hover:border-border shadow-card"
+            title={isSidebarCollapsed ? "展开左侧栏 (Ctrl+B)" : "收起左侧栏 (Ctrl+B)"}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Center Tab Switcher (绝对居中) */}

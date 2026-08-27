@@ -275,7 +275,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const sampleQuestions = dynamicQuestions;
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-paper overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-[calc(100vh-3rem)] bg-paper overflow-hidden relative">
       {/* 顶部会话标题与工具栏 */}
       <div className="h-12 border-b border-border px-6 flex items-center justify-between bg-paper/90 backdrop-blur-md flex-shrink-0 text-xs z-10 select-none">
         <div className="flex items-center gap-2.5 truncate max-w-xl">
@@ -342,27 +342,26 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       {/* 消息滚动主区域 (Editorial Document Flow) */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto text-center space-y-8 animate-fade-in py-12">
+          <div className="flex flex-col items-center pt-[8vh] max-w-2xl mx-auto text-center space-y-6 animate-fade-in pb-6">
             <div className="w-12 h-12 rounded-2xl bg-ink-900 text-white flex items-center justify-center shadow-md">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold text-ink-900 tracking-tight">
-                {sessionTitle || 'RAG Studio 知识研读工作台'}
+              <h2 className="text-2xl font-semibold text-ink-900 tracking-tight">
+                {sessionTitle === '新研读会话' || !sessionTitle ? '你好' : sessionTitle}
               </h2>
               <p className="text-xs text-ink-500 leading-relaxed max-w-md mx-auto">
-                已挂载目标知识库：<strong className="text-ink-900 font-semibold">{selectedKB || '请先在左侧选择知识库'}</strong>。<br />
-                支持多文档关联、表格解析、标题层级面包屑注入与严密防幻觉生成。
+                已挂载目标知识库：<strong className="text-ink-900 font-semibold">{selectedKB || '请先在左侧选择知识库'}</strong>。
               </p>
             </div>
 
             {/* 快速探索卡片 */}
-            <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2">
+            <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
               {sampleQuestions.map((q, idx) => (
                 <button
                   key={idx}
                   onClick={() => onSendMessage(q)}
-                  className="p-3.5 rounded-xl bg-surface border border-border hover:border-stone-400 text-xs font-medium text-ink-900 hover:text-ink-900 transition-all shadow-card hover:shadow-float flex items-start justify-between group text-left"
+                  className="p-4 sm:p-5 rounded-xl bg-surface border border-border hover:border-stone-400 text-xs font-medium text-ink-900 hover:text-ink-900 transition-all shadow-card hover:shadow-float flex items-start justify-between group text-left min-h-[110px]"
                 >
                   <span className="leading-relaxed pr-2">{q}</span>
                   <ArrowUpRight className="w-4 h-4 text-ink-400 group-hover:text-ink-900 flex-shrink-0 mt-0.5 transition-colors" />
@@ -472,9 +471,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
             <div className="flex items-center justify-between pt-2 px-1 text-xs border-t border-border/60">
               <div className="flex items-center space-x-2 text-ink-500">
-                <span className="font-mono text-[11px]">Shift + Enter 换行</span>
-                <span>·</span>
-                <span className="font-mono text-[11px]">Enter 发送</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -500,10 +496,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             </div>
           </form>
-
-          <div className="text-center text-[11px] text-ink-400 mt-2 font-serif italic">
-            严谨可信问答 · 每一处事实均由 BGE-Reranker 交叉注意力验证
-          </div>
         </div>
       </div>
     </div>

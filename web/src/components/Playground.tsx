@@ -43,7 +43,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ selectedKB }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-paper overflow-y-auto p-6 space-y-6 select-none">
+    <div className="flex-1 flex flex-col h-[calc(100vh-3rem)] bg-paper overflow-y-auto p-6 space-y-6 select-none">
       {/* Playground Header & Query Bar */}
       <div className="max-w-4xl mx-auto w-full space-y-5">
         <div>

@@ -228,29 +228,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setEditingSessionId(null);
   };
 
-  if (isCollapsed) {
-    return null;
-  }
-
   return (
     <>
       <aside 
-        style={{ width: `${width}px` }}
-        className="relative bg-paper border-r border-border flex flex-col justify-between select-none flex-shrink-0 z-20 h-[calc(100vh-3.5rem)] transition-all duration-75"
+        style={{ 
+          width: isCollapsed ? 0 : `${width}px`,
+          borderRightWidth: isCollapsed ? 0 : '1px',
+          opacity: isCollapsed ? 0 : 1
+        }}
+        className="relative bg-paper border-border flex-shrink-0 z-20 h-[calc(100vh-3rem)] transition-all duration-300 ease-in-out overflow-hidden"
       >
+        <div style={{ width: `${width}px` }} className="flex flex-col justify-between h-full">
         
         {/* 顶部区域：新建对话与知识库卡片 */}
         <div className="p-4 space-y-4">
           
-          {/* 新建研读对话主按钮 */}
-          <button
-            onClick={onCreateSession}
-            className="w-full bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-center gap-2 shadow-card hover:border-stone-400 transition-all group"
-          >
-            <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
-            <span>新建研读对话</span>
-          </button>
-
           {/* 挂载知识库卡片 */}
           <div className="pt-1">
             <div className="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
@@ -267,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {currentKB ? (
               <div 
                 onClick={() => setIsKBModalOpen(true)}
-                className="bg-surface border border-border hover:border-stone-400 rounded-xl p-3 shadow-card cursor-pointer transition-all group"
+                className="bg-surface border border-border hover:border-stone-400 rounded-xl px-3 py-2 shadow-card cursor-pointer transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 truncate">
@@ -284,16 +276,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               <div 
                 onClick={() => setIsKBModalOpen(true)}
-                className="bg-surface border border-dashed border-border rounded-xl p-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400"
+                className="bg-surface border border-dashed border-border rounded-xl px-3 py-2 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400"
               >
                 暂无挂载知识库，点击添加
               </div>
             )}
           </div>
 
-          {/* 会话搜索框 */}
-          <div className="pt-1">
-            <div className="relative flex items-center">
+          {/* 搜索与新建对话 */}
+          <div className="pt-1 flex items-center gap-2">
+            <div className="relative flex items-center flex-1">
               <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2.5 pointer-events-none" />
               <input
                 type="text"
@@ -303,6 +295,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="w-full bg-surface border border-border text-xs text-ink-900 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
               />
             </div>
+            <button
+              onClick={onCreateSession}
+              className="flex items-center justify-center bg-surface hover:bg-subtle border border-border rounded-lg p-1.5 shrink-0 shadow-card hover:border-stone-400 transition-all group"
+              title="新建研读对话"
+            >
+              <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
+            </button>
           </div>
 
         </div>
@@ -386,8 +385,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <span className="text-xs font-semibold text-ink-900">工程研究员</span>
             </div>
-            <span className="text-[11px] font-mono text-ink-500">v1.2.0</span>
           </div>
+        </div>
         </div>
 
         {/* 侧边隐形极细调节把手 (Delicate Hairline Resizer) */}

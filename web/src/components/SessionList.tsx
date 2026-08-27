@@ -74,7 +74,7 @@ export const SessionList: React.FC<SessionListProps> = ({
   };
 
   return (
-    <aside className="w-64 border-r border-border bg-paper flex flex-col h-[calc(100vh-3.5rem)] flex-shrink-0 z-10 select-none">
+    <aside className="w-64 border-r border-border bg-paper flex flex-col h-[calc(100vh-3rem)] flex-shrink-0 z-10 select-none">
       {/* 新建对话主按钮 */}
       <div className="p-3 border-b border-border">
         <button

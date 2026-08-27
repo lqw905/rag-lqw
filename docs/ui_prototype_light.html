@@ -400,9 +400,11 @@
   </main>
 
   <!-- ========================================================================= -->
-  <!-- 4. 右侧优雅滑出引用溯源抽屉 (Slide-over Citation Drawer) -->
+  <!-- 4. 雾化背景遮罩与右侧滑出引用溯源抽屉 (Slide-over Citation Drawer & Frosted Backdrop) -->
   <!-- ========================================================================= -->
-  <aside id="citation-drawer" class="w-96 bg-surface border-l border-border flex flex-col justify-between shadow-popover z-30 transition-transform duration-300 ease-in-out translate-x-0">
+  <div id="citation-backdrop" onclick="toggleDrawer()" class="fixed inset-0 bg-stone-900/25 backdrop-blur-sm z-40 transition-opacity duration-300 hidden cursor-pointer"></div>
+
+  <aside id="citation-drawer" class="fixed inset-y-0 right-0 w-96 bg-surface border-l border-border flex flex-col justify-between shadow-popover z-50 transition-transform duration-300 ease-in-out translate-x-full">
     
     <!-- 抽屉头部 -->
     <div class="p-4 border-b border-border flex items-center justify-between bg-paper/50">
@@ -486,13 +488,22 @@
   <script>
     function toggleDrawer() {
       const drawer = document.getElementById('citation-drawer');
-      drawer.classList.toggle('translate-x-full');
-      drawer.classList.toggle('hidden');
+      const backdrop = document.getElementById('citation-backdrop');
+      const isClosed = drawer.classList.contains('translate-x-full');
+      if (isClosed) {
+        drawer.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        drawer.classList.add('translate-x-full');
+        backdrop.classList.add('hidden');
+      }
     }
 
     function openCitation(id) {
       const drawer = document.getElementById('citation-drawer');
-      drawer.classList.remove('translate-x-full', 'hidden');
+      const backdrop = document.getElementById('citation-backdrop');
+      drawer.classList.remove('translate-x-full');
+      backdrop.classList.remove('hidden');
       
       // 滚动并高亮特定卡片
       const card = document.getElementById(`citation-card-${id}`);

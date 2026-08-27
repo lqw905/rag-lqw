@@ -294,7 +294,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-brand-500/30 selection:text-brand-200">
+    <div className="min-h-screen bg-paper text-ink-900 flex flex-col font-sans selection:bg-stone-200 selection:text-ink-900">
       {/* 顶部导航栏 */}
       <Header
         activeTab={activeTab}

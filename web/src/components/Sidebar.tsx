@@ -120,17 +120,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 border-r border-slate-800/80 bg-slate-900/30 flex flex-col h-[calc(100vh-3.5rem)] flex-shrink-0 z-20">
+    <aside className="w-64 border-r border-border bg-paper flex flex-col h-[calc(100vh-3.5rem)] flex-shrink-0 z-20 select-none">
       {/* KB Selector Section */}
-      <div className="p-4 border-b border-slate-800/80">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-brand-400" />
+          <label className="text-[11px] font-semibold text-ink-500 uppercase tracking-wider flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-ink-700" />
             目标知识库
           </label>
           <button
             onClick={() => setIsCreating(true)}
-            className="text-xs text-brand-400 hover:text-brand-300 font-medium flex items-center gap-1 transition-colors"
+            className="text-xs text-ink-900 hover:text-accent-hover font-medium flex items-center gap-1 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             新建
@@ -142,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <select
               value={selectedKB}
               onChange={(e) => onSelectKB(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-800 text-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 appearance-none cursor-pointer pr-10"
+              className="w-full bg-surface border border-border text-ink-900 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-stone-400 appearance-none cursor-pointer pr-10 shadow-card"
             >
               {knowledgeBases.map((kb) => (
                 <option key={kb.kb_name} value={kb.kb_name}>
@@ -150,39 +150,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </option>
               ))}
             </select>
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-400 text-xs">
               ▼
             </div>
           </div>
         ) : (
-          <div className="p-3 text-center rounded-xl bg-slate-950/50 border border-dashed border-slate-800 text-slate-500 text-xs">
+          <div className="p-3 text-center rounded-xl bg-surface border border-dashed border-border text-ink-400 text-xs">
             暂无知识库，请先点击右上角“新建”
           </div>
         )}
 
         {/* Current KB Stats & Actions */}
         {currentKB && (
-          <div className="mt-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2.5">
+          <div className="mt-3 p-3 rounded-xl bg-surface border border-border space-y-2.5 shadow-card">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-medium">已索引分块</span>
-              <span className="text-xs font-bold text-brand-400 font-mono bg-brand-500/10 px-2 py-0.5 rounded-md border border-brand-500/20">
+              <span className="text-[11px] text-ink-500 font-medium">已索引分块</span>
+              <span className="text-xs font-bold text-ink-900 font-mono bg-subtle px-2 py-0.5 rounded-md border border-border">
                 {currentKB.chunk_count} 块
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/50">
+            <div className="flex items-center gap-1.5 pt-1 border-t border-border/60">
               <button
                 onClick={onOpenChunkModal}
                 disabled={currentKB.chunk_count === 0}
-                className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 text-xs font-medium flex items-center justify-center gap-1.5 transition-all border border-slate-700/50 hover:border-brand-500/40"
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-subtle hover:bg-stone-200 disabled:opacity-40 disabled:pointer-events-none text-ink-900 text-xs font-medium flex items-center justify-center gap-1.5 transition-all border border-border"
                 title="查看该知识库的切片与面包屑结构"
               >
-                <Layers className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" />
+                <Layers className="w-3.5 h-3.5 text-ink-700 flex-shrink-0" />
                 <span className="whitespace-nowrap">切片预览</span>
               </button>
               <button
                 onClick={() => handleDeleteKB(currentKB.kb_name)}
-                className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors border border-transparent hover:border-rose-500/30 flex items-center justify-center flex-shrink-0"
+                className="p-1.5 rounded-lg hover:bg-rose-50 text-ink-400 hover:text-rose-600 transition-colors border border-transparent hover:border-rose-200 flex items-center justify-center flex-shrink-0"
                 title="删除此知识库"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -194,8 +194,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Document Ingestion & Drag Drop */}
       <div className="p-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-          <Upload className="w-3.5 h-3.5 text-brand-400" />
+        <h3 className="text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <Upload className="w-3.5 h-3.5 text-ink-700" />
           文档摄入与切片
         </h3>
 
@@ -215,8 +215,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-2xl p-5 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
             isDragging
-              ? 'border-brand-500 bg-brand-500/10'
-              : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/70'
+              ? 'border-ink-900 bg-subtle'
+              : 'border-border hover:border-stone-400 bg-surface/60 hover:bg-surface shadow-card'
           }`}
         >
           <input
@@ -233,17 +233,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
           {isUploading ? (
             <div className="flex flex-col items-center gap-2 py-2">
-              <Loader2 className="w-6 h-6 text-brand-400 animate-spin" />
-              <p className="text-xs text-brand-300 font-medium">正在解析、切片与向量化...</p>
+              <Loader2 className="w-6 h-6 text-ink-900 animate-spin" />
+              <p className="text-xs text-ink-900 font-medium">正在解析、切片与向量化...</p>
             </div>
           ) : (
             <>
-              <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-300 shadow-inner">
-                <Upload className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-xl bg-subtle flex items-center justify-center text-ink-700 shadow-sm border border-border">
+                <Upload className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-medium text-slate-200">点击或拖拽文档到此处</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">支持格式: .docx, .txt, .md</p>
+                <p className="text-xs font-medium text-ink-900">点击或拖拽文档到此处</p>
+                <p className="text-[11px] text-ink-400 mt-0.5 font-mono">支持格式: .docx, .txt, .md</p>
               </div>
             </>
           )}
@@ -254,23 +254,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div
             className={`mt-3 p-3 rounded-xl text-xs flex items-start gap-2 animate-fade-in ${
               uploadMessage.type === 'success'
-                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
-                : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border border-rose-200 text-rose-800'
             }`}
           >
             {uploadMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600" />
             ) : (
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
             )}
             <span className="leading-relaxed">{uploadMessage.text}</span>
           </div>
         )}
 
         {/* Technical Tips */}
-        <div className="mt-auto pt-4 border-t border-slate-800/60">
-          <div className="p-3 rounded-xl bg-slate-950/30 border border-slate-800/50 text-[11px] text-slate-400 space-y-1.5">
-            <div className="font-semibold text-slate-300 flex items-center gap-1">
+        <div className="mt-auto pt-4 border-t border-border">
+          <div className="p-3 rounded-xl bg-surface border border-border text-[11px] text-ink-500 space-y-1.5 shadow-card">
+            <div className="font-semibold text-ink-900 flex items-center gap-1">
               <span>💡 切片优化特性</span>
             </div>
             <p>• 自动提取 Word 标题层级转为 Markdown 面包屑；</p>
@@ -282,22 +282,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Modal: Create Knowledge Base */}
       {isCreating && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-md p-6 shadow-popover animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center border border-brand-500/20">
+              <div className="w-9 h-9 rounded-xl bg-subtle text-ink-900 flex items-center justify-center border border-border">
                 <FolderPlus className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-100">新建知识库</h3>
-                <p className="text-xs text-slate-400">创建一个独立的知识库 Collection</p>
+                <h3 className="font-bold text-ink-900 text-sm">新建知识库</h3>
+                <p className="text-xs text-ink-500">创建一个独立的知识库 Collection</p>
               </div>
             </div>
 
             <form onSubmit={handleCreateKB} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  知识库标识 (kb_name) <span className="text-rose-400">*</span>
+                <label className="block text-xs font-medium text-ink-700 mb-1.5">
+                  知识库标识 (kb_name) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -305,18 +305,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   placeholder="例如: tech_manuals"
                   value={newKBName}
                   onChange={(e) => setNewKBName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500"
+                  className="w-full bg-paper border border-border rounded-xl px-3.5 py-2.5 text-xs text-ink-900 focus:outline-none focus:border-stone-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">知识库描述（可选）</label>
+                <label className="block text-xs font-medium text-ink-700 mb-1.5">知识库描述（可选）</label>
                 <input
                   type="text"
                   placeholder="例如: 包含系统部署与架构设计文档"
                   value={newKBDesc}
                   onChange={(e) => setNewKBDesc(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500"
+                  className="w-full bg-paper border border-border rounded-xl px-3.5 py-2.5 text-xs text-ink-900 focus:outline-none focus:border-stone-400"
                 />
               </div>
 
@@ -324,13 +324,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-ink-500 hover:text-ink-900 hover:bg-subtle transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/30 transition-all"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-ink-900 hover:bg-accent-hover text-white shadow-card transition-all"
                 >
                   确认创建
                 </button>

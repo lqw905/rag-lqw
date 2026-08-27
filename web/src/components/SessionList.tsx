@@ -74,15 +74,15 @@ export const SessionList: React.FC<SessionListProps> = ({
   };
 
   return (
-    <aside className="w-64 border-r border-slate-800/80 bg-slate-900/50 flex flex-col h-[calc(100vh-3.5rem)] flex-shrink-0 z-10 select-none">
+    <aside className="w-64 border-r border-border bg-paper flex flex-col h-[calc(100vh-3.5rem)] flex-shrink-0 z-10 select-none">
       {/* 新建对话主按钮 */}
-      <div className="p-3 border-b border-slate-800/80">
+      <div className="p-3 border-b border-border">
         <button
           onClick={onCreateSession}
-          className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+          className="w-full py-2 px-3.5 rounded-xl bg-ink-900 hover:bg-accent-hover text-white text-xs font-semibold shadow-card active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
         >
           <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
-          <span>新建对话 (New Chat)</span>
+          <span>新建研读对话</span>
         </button>
       </div>
 
@@ -93,17 +93,17 @@ export const SessionList: React.FC<SessionListProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索历史会话..."
-            className="w-full bg-slate-950/80 border border-slate-800 text-slate-200 rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500 placeholder:text-slate-600"
+            placeholder="搜索研读历史..."
+            className="w-full bg-surface border border-border text-ink-900 rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
           />
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2" />
+          <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2 top-2" />
         </div>
       </div>
 
       {/* 会话卡片列表 */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4 min-h-0">
         {filteredSessions.length === 0 ? (
-          <div className="text-center py-8 text-slate-600 text-xs">
+          <div className="text-center py-8 text-ink-400 text-xs">
             {searchQuery ? '未搜索到相关会话' : '暂无对话，点击上方新建'}
           </div>
         ) : (
@@ -111,8 +111,8 @@ export const SessionList: React.FC<SessionListProps> = ({
             {/* 分组：今天 */}
             {todaySessions.length > 0 && (
               <div>
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 mb-1.5 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-slate-500" />
+                <div className="text-[10px] font-bold text-ink-400 uppercase tracking-wider px-1 mb-1.5 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-ink-400" />
                   今天 ({todaySessions.length})
                 </div>
                 <div className="space-y-1">
@@ -141,7 +141,7 @@ export const SessionList: React.FC<SessionListProps> = ({
             {/* 分组：更早 */}
             {earlierSessions.length > 0 && (
               <div>
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 mb-1.5">
+                <div className="text-[10px] font-bold text-ink-400 uppercase tracking-wider px-1 mb-1.5">
                   更早 ({earlierSessions.length})
                 </div>
                 <div className="space-y-1">
@@ -171,12 +171,12 @@ export const SessionList: React.FC<SessionListProps> = ({
       </div>
 
       {/* 底部统计与清空 */}
-      <div className="p-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-        <span className="text-[11px] text-slate-500">共 {sessions.length} 个对话</span>
+      <div className="p-3 border-t border-border flex items-center justify-between text-xs text-ink-500 bg-paper/60">
+        <span className="text-[11px] font-mono text-ink-500">共 {sessions.length} 个对话</span>
         {sessions.length > 0 && (
           <button
             onClick={onClearSessions}
-            className="text-[11px] text-slate-500 hover:text-rose-400 transition-colors"
+            className="text-[11px] text-ink-400 hover:text-rose-600 transition-colors"
           >
             清空本库会话
           </button>
@@ -216,14 +216,14 @@ const SessionCard: React.FC<SessionCardProps> = ({
       onClick={onSelect}
       className={`p-2 rounded-xl cursor-pointer transition-all flex items-center justify-between group text-xs ${
         isActive
-          ? 'bg-brand-600/20 border border-brand-500/40 text-white shadow-sm'
-          : 'hover:bg-slate-800/60 text-slate-300 border border-transparent'
+          ? 'bg-surface border border-border text-ink-900 font-semibold shadow-card'
+          : 'hover:bg-subtle text-ink-700 border border-transparent'
       }`}
     >
       <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-1">
         <MessageSquare
           className={`w-3.5 h-3.5 flex-shrink-0 ${
-            isActive ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-400'
+            isActive ? 'text-ink-900' : 'text-ink-400 group-hover:text-ink-700'
           }`}
         />
         {isEditing ? (
@@ -235,10 +235,10 @@ const SessionCard: React.FC<SessionCardProps> = ({
             onKeyDown={onKeyDown}
             autoFocus
             onClick={(e) => e.stopPropagation()}
-            className="w-full bg-slate-950 border border-brand-500 text-white rounded px-1.5 py-0.5 text-xs focus:outline-none"
+            className="w-full bg-paper border border-stone-400 text-ink-900 rounded px-1.5 py-0.5 text-xs focus:outline-none"
           />
         ) : (
-          <span className="truncate font-medium text-slate-200">{session.title}</span>
+          <span className="truncate font-medium text-ink-900">{session.title}</span>
         )}
       </div>
 
@@ -246,14 +246,14 @@ const SessionCard: React.FC<SessionCardProps> = ({
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           <button
             onClick={onStartRename}
-            className="p-1 rounded hover:bg-slate-700/80 text-slate-400 hover:text-brand-300 transition-colors"
+            className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
             title="重命名会话"
           >
             <Edit3 className="w-3 h-3" />
           </button>
           <button
             onClick={onDelete}
-            className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
+            className="p-1 rounded hover:bg-rose-100 text-ink-500 hover:text-rose-600 transition-colors"
             title="删除会话"
           >
             <Trash2 className="w-3 h-3" />

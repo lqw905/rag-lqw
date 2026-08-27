@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG-GK 知识引擎 · Studio Light 设计原型</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans, Newsreader & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            paper: '#FAF9F6', // 温暖杂志米灰纸张底色
+            surface: '#FFFFFF', // 纯白高光卡片
+            border: '#E8E6DF', // 优雅浅暖灰边框
+            subtle: '#F2F0E8', // 次级背景底色
+            ink: {
+              900: '#191918', // 主标题/高对比正文
+              700: '#3D3D3A', // 次级正文
+              500: '#73726C', // 辅助描述与注脚
+              400: '#A1A09A', // 占位符/禁用态
+              200: '#E3E2DC', // 分割线
+            },
+            accent: {
+              DEFAULT: '#0F172A', // 曜岩黑主按钮
+              hover: '#334155',
+              blue: '#2563EB',
+              emerald: '#059669',
+              amber: '#D97706',
+            }
+          },
+          boxShadow: {
+            'card': '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+            'float': '0 12px 32px -4px rgba(25, 25, 24, 0.06), 0 4px 12px -2px rgba(25, 25, 24, 0.03)',
+            'popover': '0 20px 40px -8px rgba(25, 25, 24, 0.12), 0 1px 3px 0 rgba(25, 25, 24, 0.04)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 纸张质感与优雅微交互样式 */
+    body {
+      background-color: #FAF9F6;
+      color: #191918;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* 优雅自定义滚动条 */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D8D6CD;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #B8B6AC;
+    }
+
+    /* 学术风数字注脚徽章 (去 AI 味设计) */
+    .footnote-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: "JetBrains Mono", monospace;
+      color: #57564F;
+      background-color: #F0EEE6;
+      border: 1px solid #DFDDD4;
+      border-radius: 4px;
+      margin: 0 3px;
+      cursor: pointer;
+      vertical-align: 3px;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .footnote-pill:hover {
+      background-color: #191918;
+      color: #FFFFFF;
+      border-color: #191918;
+      transform: translateY(-1px);
+    }
+
+    /* 代码块与 Markdown 风格 */
+    pre, code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* 骨架屏淡入效果 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-enter {
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+
+<body class="h-screen w-screen overflow-hidden flex font-sans selection:bg-stone-200 selection:text-ink-900">
+
+  <!-- ========================================================================= -->
+  <!-- 1. 左侧极简工作台导航 (Sidebar) -->
+  <!-- ========================================================================= -->
+  <aside class="w-72 bg-paper border-r border-border flex flex-col justify-between select-none flex-shrink-0 z-20">
+    
+    <!-- 顶部 Branding 与知识库切换 -->
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-ink-900 flex items-center justify-center text-surface shadow-sm">
+            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              <line x1="9" y1="7" x2="15" y2="7"></line>
+              <line x1="9" y1="11" x2="13" y2="11"></line>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-sm font-semibold tracking-tight text-ink-900 leading-none">RAG Studio</h1>
+            <p class="text-[11px] font-medium text-ink-500 mt-1">企业可信知识库引擎</p>
+          </div>
+        </div>
+        <button class="p-1.5 text-ink-500 hover:text-ink-900 hover:bg-subtle rounded-md transition-colors" title="收起边栏">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+        </button>
+      </div>
+
+      <!-- 新建对话按钮 -->
+      <button class="w-full bg-surface hover:bg-subtle text-ink-900 border border-border rounded-lg py-2 px-3 text-xs font-medium flex items-center justify-between shadow-card hover:border-stone-400 transition-all group">
+        <span class="flex items-center space-x-2">
+          <svg class="w-3.5 h-3.5 text-ink-500 group-hover:text-ink-900" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>新建研读对话</span>
+        </span>
+        <kbd class="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
+      </button>
+
+      <!-- 知识库选择卡片 -->
+      <div class="mt-4 pt-4 border-t border-border">
+        <div class="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
+          <span>挂载知识库</span>
+          <button class="hover:text-ink-900 transition-colors" title="管理知识库">管理</button>
+        </div>
+
+        <div class="bg-surface border border-border rounded-lg p-2.5 shadow-card space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 truncate">
+              <span class="w-2 h-2 rounded-full bg-accent-emerald"></span>
+              <span class="text-xs font-semibold text-ink-900 truncate">星渊灵械纪元 (私域)</span>
+            </div>
+            <span class="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded">48 切片</span>
+          </div>
+          <div class="text-[11px] text-ink-500 flex justify-between items-center pt-1 border-t border-stone-100">
+            <span>BGE-M3 + Rerank</span>
+            <span class="text-emerald-700 font-mono text-[10px]">已就绪</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中部历史对话列表 -->
+    <div class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+      <div class="text-[11px] font-semibold text-ink-400 uppercase tracking-wider px-2 py-1">近期研读记录</div>
+
+      <a href="#" class="flex items-center justify-between px-2.5 py-2 rounded-lg bg-surface border border-border text-xs font-medium text-ink-900 shadow-card">
+        <span class="truncate flex items-center space-x-2">
+          <svg class="w-3.5 h-3.5 text-ink-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          <span class="truncate">楚渊生平与太苍重工秘辛</span>
+        </span>
+        <span class="text-[10px] text-ink-400 font-mono flex-shrink-0 ml-2">16:47</span>
+      </a>
+
+      <a href="#" class="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-subtle text-xs text-ink-700 transition-colors">
+        <span class="truncate flex items-center space-x-2">
+          <svg class="w-3.5 h-3.5 text-ink-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          <span class="truncate">FLT-4099 故障自检 SOP</span>
+        </span>
+        <span class="text-[10px] text-ink-400 font-mono flex-shrink-0 ml-2">16:20</span>
+      </a>
+
+      <a href="#" class="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-subtle text-xs text-ink-700 transition-colors">
+        <span class="truncate flex items-center space-x-2">
+          <svg class="w-3.5 h-3.5 text-ink-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          <span class="truncate">天威裁决者 vs 周天八卦号</span>
+        </span>
+        <span class="text-[10px] text-ink-400 font-mono flex-shrink-0 ml-2">15:52</span>
+      </a>
+    </div>
+
+    <!-- 底部状态与操作栏 -->
+    <div class="p-3 border-t border-border bg-paper/60 space-y-2">
+      <div class="flex items-center justify-between text-xs px-1">
+        <div class="flex items-center space-x-2">
+          <div class="w-6 h-6 rounded-full bg-stone-300 flex items-center justify-center text-[10px] font-bold text-ink-700">LQ</div>
+          <span class="text-xs font-medium text-ink-900">工程研究员</span>
+        </div>
+        <span class="text-[11px] font-mono text-ink-500">v1.2.0</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- 2. 主研读区域 (Main Editorial Workspace) -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 flex flex-col h-full bg-paper relative overflow-hidden">
+    
+    <!-- 顶部状态工具栏 (Clean Editorial Header) -->
+    <header class="h-14 border-b border-border bg-paper/80 backdrop-blur-md px-8 flex items-center justify-between z-10">
+      <div class="flex items-center space-x-3">
+        <span class="text-xs font-semibold text-ink-900">当前研讨主题</span>
+        <span class="text-ink-400">/</span>
+        <span class="text-xs font-serif italic text-ink-700 text-sm">《星海主要宗阀与核心人物志》精细化研读</span>
+      </div>
+
+      <!-- 检索指标与控制胶囊 -->
+      <div class="flex items-center space-x-3 text-xs">
+        <div class="flex items-center space-x-1.5 bg-surface border border-border px-2.5 py-1 rounded-full text-ink-700 shadow-card">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="font-mono text-[11px]">RRF 混合检索 + 重排</span>
+        </div>
+        <div class="bg-surface border border-border px-2.5 py-1 rounded-full text-[11px] font-mono text-ink-500 shadow-card">
+          耗时 24ms
+        </div>
+        <button class="bg-surface hover:bg-subtle border border-border p-1.5 rounded-full text-ink-500 hover:text-ink-900 transition-colors shadow-card" title="导出研读报告">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 研读对话主视口 (Editorial Document Flow) -->
+    <div class="flex-1 overflow-y-auto px-6 py-8">
+      <div class="max-w-3xl mx-auto space-y-10">
+
+        <!-- 研读消息块 1: 用户提问 -->
+        <div class="space-y-3 animate-enter">
+          <div class="flex items-center justify-between text-xs text-ink-500">
+            <span class="font-mono uppercase tracking-wider font-semibold text-ink-700">研究提问 · 01</span>
+            <span class="font-mono text-[11px]">16:47:12</span>
+          </div>
+          <h2 class="text-xl font-semibold text-ink-900 font-sans tracking-tight leading-snug">
+            太苍灵能重工首席天工楚渊的个人终端代码是多少？他的胸腔核心隐藏着什么秘密？
+          </h2>
+        </div>
+
+        <!-- 研读消息块 2: RAG 回答与学术注脚 -->
+        <div class="bg-surface border border-border rounded-xl p-7 shadow-card space-y-5 animate-enter">
+          
+          <!-- 检索命中提示横条 -->
+          <div class="flex items-center justify-between pb-4 border-b border-border text-xs">
+            <div class="flex items-center space-x-2 text-ink-700">
+              <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <span class="font-medium">已依据私域文档精准检索确认</span>
+            </div>
+            <div class="flex items-center space-x-2 font-mono text-[11px] text-ink-500">
+              <span>置信度: <strong class="text-emerald-700">99.7%</strong></span>
+              <span>·</span>
+              <button onclick="toggleDrawer()" class="text-ink-900 font-sans font-medium hover:underline flex items-center space-x-1">
+                <span>查看 3 条引用源</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 回答正文 (高阅读舒适度排版) -->
+          <div class="text-ink-900 text-sm leading-relaxed space-y-4 font-sans">
+            <p>
+              根据《星海主要宗阀与核心人物志》中关于太苍重工核心领袖的档案记载，首席天工<strong>楚渊（Chu Yuan）</strong>的相关保密信息如下：
+            </p>
+
+            <!-- 结构化关键信息表格 -->
+            <div class="my-4 border border-border rounded-lg overflow-hidden bg-subtle/30">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-subtle text-ink-700 font-semibold border-b border-border">
+                  <tr>
+                    <th class="py-2.5 px-4">项目指标</th>
+                    <th class="py-2.5 px-4">官方档案参数</th>
+                    <th class="py-2.5 px-4">溯源出处</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-border text-ink-900">
+                  <tr>
+                    <td class="py-2.5 px-4 font-medium text-ink-700">个人终端代码</td>
+                    <td class="py-2.5 px-4 font-mono font-semibold text-ink-900">CY-ROOT-0007</td>
+                    <td class="py-2.5 px-4 text-ink-500">人物志 §2.1 <span class="footnote-pill" onclick="openCitation(1)">1</span></td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-4 font-medium text-ink-700">生理与义体状态</td>
+                    <td class="py-2.5 px-4">542岁 · 98% 天阶玄金义体化</td>
+                    <td class="py-2.5 px-4 text-ink-500">人物志 §2.1 <span class="footnote-pill" onclick="openCitation(1)">1</span></td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-4 font-medium text-ink-700">境界评级</td>
+                    <td class="py-2.5 px-4">洞虚境巅峰（半步万象合道）</td>
+                    <td class="py-2.5 px-4 text-ink-500">人物志 §2.1 <span class="footnote-pill" onclick="openCitation(2)">2</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="text-sm font-semibold text-ink-900 pt-2">胸腔核心的机密真相（Level-A 权限）：</h3>
+            <p>
+              楚渊胸腔内驱动其天阶玄金躯体的动力源<strong>并非标准军规灵晶反应炉</strong>，而是其早年探索太初溟海深渊时，亲手猎杀并封印的一颗<strong>「幼年期噬星兽心核」</strong><span class="footnote-pill" onclick="openCitation(1)">1</span>。该核心能够源源不断地吞噬虚数以太界暗物质，为其设计的“戮仙级光矛发射阵列”提供近乎无限的瞬时过载能流<span class="footnote-pill" onclick="openCitation(3)">3</span>。
+            </p>
+          </div>
+
+          <!-- 底部交互动作条 -->
+          <div class="pt-4 border-t border-border flex items-center justify-between text-xs text-ink-500">
+            <div class="flex items-center space-x-4">
+              <button class="hover:text-ink-900 flex items-center space-x-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                <span>复制回答</span>
+              </button>
+              <button class="hover:text-ink-900 flex items-center space-x-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
+                <span>精准有据</span>
+              </button>
+            </div>
+            <span class="font-mono text-[11px]">DeepSeek-V3 · 284 Tokens</span>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 3. 底部悬浮极简指令输入坞 (Floating Studio Command Dock) -->
+    <!-- ========================================================================= -->
+    <div class="p-6 bg-gradient-to-t from-paper via-paper to-transparent">
+      <div class="max-w-3xl mx-auto">
+        
+        <!-- 快捷研读建议胶囊 -->
+        <div class="flex items-center space-x-2 mb-3 overflow-x-auto pb-1 text-xs">
+          <span class="text-ink-400 text-[11px] font-medium flex-shrink-0">延伸研讨:</span>
+          <button class="bg-surface hover:bg-subtle border border-border px-3 py-1 rounded-full text-ink-700 hover:text-ink-900 transition-colors shadow-card flex-shrink-0">
+            赫莲娜·幽溟的第14代克隆体设定
+          </button>
+          <button class="bg-surface hover:bg-subtle border border-border px-3 py-1 rounded-full text-ink-700 hover:text-ink-900 transition-colors shadow-card flex-shrink-0">
+            战列舰“天威裁决者”的主武器配置
+          </button>
+          <button class="bg-surface hover:bg-subtle border border-border px-3 py-1 rounded-full text-ink-700 hover:text-ink-900 transition-colors shadow-card flex-shrink-0">
+            FLT-4099 故障处置 SOP
+          </button>
+        </div>
+
+        <!-- 核心输入卡片 (极简圆润白底) -->
+        <div class="bg-surface border border-border focus-within:border-stone-500 rounded-2xl p-3 shadow-float transition-all">
+          <textarea 
+            rows="2" 
+            placeholder="向知识库提出深度问题，或输入指令（支持多文档关联推理）..."
+            class="w-full bg-transparent text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none resize-none px-2 leading-relaxed"
+          ></textarea>
+
+          <div class="flex items-center justify-between pt-2 px-1 text-xs border-t border-stone-100">
+            <div class="flex items-center space-x-3 text-ink-500">
+              <button class="hover:text-ink-900 flex items-center space-x-1 transition-colors" title="添加附件或切片">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <span>上传补充资料</span>
+              </button>
+              <span>·</span>
+              <span class="font-mono text-[11px]">Shift + Enter 换行</span>
+            </div>
+
+            <!-- 发送按钮 -->
+            <button class="bg-ink-900 hover:bg-accent-hover text-white px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition-all">
+              <span>提问</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="text-center text-[11px] text-ink-400 mt-2 font-serif italic">
+          严谨可信问答 · 每一处事实均由 BGE-Reranker 交叉注意力验证
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 4. 右侧优雅滑出引用溯源抽屉 (Slide-over Citation Drawer) -->
+  <!-- ========================================================================= -->
+  <aside id="citation-drawer" class="w-96 bg-surface border-l border-border flex flex-col justify-between shadow-popover z-30 transition-transform duration-300 ease-in-out translate-x-0">
+    
+    <!-- 抽屉头部 -->
+    <div class="p-4 border-b border-border flex items-center justify-between bg-paper/50">
+      <div class="flex items-center space-x-2">
+        <svg class="w-4 h-4 text-ink-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <h3 class="text-xs font-semibold text-ink-900">溯源引用档案 (Citations)</h3>
+      </div>
+      <button onclick="toggleDrawer()" class="p-1 text-ink-400 hover:text-ink-900 rounded-md transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- 引用切片卡片列表 -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      
+      <!-- 引用卡片 1 (高亮命中) -->
+      <div id="citation-card-1" class="border-2 border-stone-800 rounded-xl p-4 bg-paper/80 space-y-3 transition-all">
+        <div class="flex items-center justify-between">
+          <span class="inline-flex items-center space-x-1 bg-ink-900 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded">
+            <span>REF</span>
+            <span>#1</span>
+          </span>
+          <span class="text-xs font-mono text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+            相似度 0.9973
+          </span>
+        </div>
+
+        <div class="text-xs">
+          <div class="font-semibold text-ink-900 flex items-center space-x-1 truncate">
+            <svg class="w-3.5 h-3.5 text-ink-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span class="truncate">03_星海主要宗阀与核心人物志.md</span>
+          </div>
+          <div class="text-[11px] text-ink-500 font-mono mt-0.5 truncate">
+            第二章：星海核心风云人物志 > 2.1 楚渊
+          </div>
+        </div>
+
+        <div class="bg-surface border border-border rounded-lg p-3 text-xs text-ink-700 font-mono leading-relaxed max-h-40 overflow-y-auto">
+          - **个人终端代码**：`CY-ROOT-0007`<br>
+          - **核心秘辛**：其早年师从算道密宗...胸腔内的核心并非标准灵晶炉，而是猎杀自溟海深渊的一颗“幼年期噬星兽心核”。
+        </div>
+      </div>
+
+      <!-- 引用卡片 2 -->
+      <div id="citation-card-2" class="border border-border hover:border-stone-400 rounded-xl p-4 bg-surface space-y-3 transition-all">
+        <div class="flex items-center justify-between">
+          <span class="inline-flex items-center space-x-1 bg-subtle text-ink-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-border">
+            <span>REF</span>
+            <span>#2</span>
+          </span>
+          <span class="text-xs font-mono text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+            相似度 0.9412
+          </span>
+        </div>
+
+        <div class="text-xs">
+          <div class="font-semibold text-ink-900 flex items-center space-x-1 truncate">
+            <span class="truncate">03_星海主要宗阀与核心人物志.md</span>
+          </div>
+          <div class="text-[11px] text-ink-500 font-mono mt-0.5 truncate">
+            第一章：四大统治势力详解 > 1.1 太苍灵能重工
+          </div>
+        </div>
+
+        <div class="bg-paper border border-border rounded-lg p-3 text-xs text-ink-700 font-mono leading-relaxed">
+          - 垄断全宇宙 80% 的灵晶矿石精炼业务与 95% 的军规级义体制造...
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 抽屉底部提示 -->
+    <div class="p-3 border-t border-border bg-paper/60 text-center text-[11px] text-ink-500 font-mono">
+      双路召回 (BM25 + Dense) · RRF Top-5 融合
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- 5. 交互脚本 (Micro-Interactions) -->
+  <!-- ========================================================================= -->
+  <script>
+    function toggleDrawer() {
+      const drawer = document.getElementById('citation-drawer');
+      drawer.classList.toggle('translate-x-full');
+      drawer.classList.toggle('hidden');
+    }
+
+    function openCitation(id) {
+      const drawer = document.getElementById('citation-drawer');
+      drawer.classList.remove('translate-x-full', 'hidden');
+      
+      // 滚动并高亮特定卡片
+      const card = document.getElementById(`citation-card-${id}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('ring-2', 'ring-stone-900');
+        setTimeout(() => {
+          card.classList.remove('ring-2', 'ring-stone-900');
+        }, 1500);
+      }
+    }
+  </script>
+
+</body>
+</html>

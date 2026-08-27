@@ -3,20 +3,19 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
-  Square, 
   Trash2, 
-  Sparkles, 
-  Bot, 
-  User, 
   BookOpen, 
   Copy, 
   Check, 
   CornerDownLeft,
   Edit3,
   Download,
-  Lightbulb
+  CheckCircle2,
+  ChevronRight,
+  ArrowUpRight,
+  StopCircle
 } from 'lucide-react';
-import type { ChatMessage, ReferenceItem } from '../types';
+import type { ChatMessage } from '../types';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -46,7 +45,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleVal, setEditTitleVal] = useState(sessionTitle);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setEditTitleVal(sessionTitle);
@@ -90,7 +89,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     }
     let mdContent = `# ${sessionTitle}\n\n知识库: ${selectedKB}\n导出时间: ${new Date().toLocaleString()}\n\n---\n\n`;
     messages.forEach((m) => {
-      mdContent += `### ${m.role === 'user' ? '👤 用户' : '🤖 AI 助手'}\n\n${m.content}\n\n`;
+      mdContent += `### ${m.role === 'user' ? '提问' : '研读回答'}\n\n${m.content}\n\n`;
       if (m.references && m.references.length > 0) {
         mdContent += `**参考资料:**\n`;
         m.references.forEach((ref) => {
@@ -110,17 +109,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const renderMessageContent = (content: string, _references?: ReferenceItem[]) => {
+  const renderMessageContent = (content: string) => {
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
           p: ({ children }) => (
-            <p className="leading-relaxed mb-2.5 last:mb-0">{renderChildrenWithCitations(children)}</p>
+            <p className="leading-relaxed mb-3 last:mb-0 text-ink-900">{renderChildrenWithCitations(children)}</p>
           ),
           li: ({ children }) => (
-            <li className="leading-relaxed">{renderChildrenWithCitations(children)}</li>
+            <li className="leading-relaxed text-ink-900">{renderChildrenWithCitations(children)}</li>
           ),
         }}
       >
@@ -137,14 +136,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         if (match) {
           const refId = parseInt(match[1], 10);
           return (
-            <button
+            <span
               key={index}
               onClick={() => onOpenCitation(refId)}
-              className="inline-flex items-center justify-center px-1.5 py-0.5 mx-0.5 text-[11px] font-bold text-brand-300 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-400/30 rounded-md transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm align-baseline"
-              title={`点击查看参考引用 [${refId}] 的原文与定位`}
+              className="footnote-pill"
+              title={`查看参考引用 [${refId}] 的原文与定位`}
             >
-              [{refId}]
-            </button>
+              {refId}
+            </span>
           );
         }
         return part;
@@ -161,16 +160,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const sampleQuestions = [
-    '系统支持哪些文档格式的解析与切片？',
-    'ChromaDB 向量检索与 BM25 是如何进行多路融合的？',
-    'Word 文档中的标题和表格是如何被结构化提取的？',
-    '如何调用 Reranker 模块对候选切片进行二次精排？',
+    '楚渊的个人终端代码是多少？胸腔核心有什么秘密？',
+    '义体修士触发 FLT-4099 故障码时的紧急处置 SOP 是什么？',
+    '在天阙坍缩之役中太苍重工使用的终极战略武器是什么？',
+    '对比“天威裁决者”和“周天八卦号”星舰的性能参数差异。',
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-slate-950 overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-paper overflow-hidden relative">
       {/* 顶部会话标题与工具栏 */}
-      <div className="h-12 border-b border-slate-800/80 px-5 flex items-center justify-between bg-slate-900/30 backdrop-blur-md flex-shrink-0 text-xs z-10">
+      <div className="h-12 border-b border-border px-6 flex items-center justify-between bg-paper/90 backdrop-blur-md flex-shrink-0 text-xs z-10 select-none">
         <div className="flex items-center gap-2.5 truncate max-w-xl">
           {isEditingTitle ? (
             <div className="flex items-center gap-1.5">
@@ -184,9 +183,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   if (e.key === 'Escape') setIsEditingTitle(false);
                 }}
                 autoFocus
-                className="bg-slate-950 border border-brand-500 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                className="bg-surface border border-stone-400 text-ink-900 rounded px-2 py-1 text-xs focus:outline-none"
               />
-              <button onClick={handleSaveTitle} className="text-brand-400 hover:text-brand-300 font-medium text-xs">
+              <button onClick={handleSaveTitle} className="text-ink-900 font-semibold text-xs">
                 保存
               </button>
             </div>
@@ -196,32 +195,32 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               className="flex items-center gap-1.5 cursor-pointer group truncate"
               title="点击编辑会话标题"
             >
-              <span className="font-semibold text-slate-200 truncate max-w-md group-hover:text-brand-300 transition-colors">
-                {sessionTitle || '新对话'}
+              <span className="font-semibold text-ink-900 truncate max-w-md group-hover:text-stone-600 transition-colors">
+                {sessionTitle || '研读对话'}
               </span>
-              <Edit3 className="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0" />
+              <Edit3 className="w-3.5 h-3.5 text-ink-400 group-hover:text-ink-900 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0" />
             </div>
           )}
-          <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-900 text-slate-400 border border-slate-800 font-mono flex-shrink-0">
-            {selectedKB || '未选库'}
+          <span className="text-[11px] px-2 py-0.5 rounded-md bg-subtle text-ink-700 border border-border font-mono flex-shrink-0">
+            {selectedKB || '未选择知识库'}
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {messages.length > 0 && (
             <>
               <button
                 onClick={handleExportMarkdown}
-                className="flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors px-2.5 py-1 rounded-lg hover:bg-slate-900"
-                title="导出为 Markdown 文件"
+                className="flex items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors px-2.5 py-1 rounded-lg hover:bg-subtle"
+                title="导出为 Markdown 报告"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">导出记录</span>
+                <span className="hidden sm:inline">导出研读报告</span>
               </button>
               <button
                 onClick={onClearMessages}
                 disabled={isStreaming}
-                className="flex items-center gap-1 text-slate-400 hover:text-rose-400 transition-colors px-2.5 py-1 rounded-lg hover:bg-slate-900"
+                className="flex items-center gap-1 text-ink-500 hover:text-rose-600 transition-colors px-2.5 py-1 rounded-lg hover:bg-rose-50"
                 title="清空当前会话消息"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -232,169 +231,172 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       </div>
 
-      {/* 消息滚动主区域 */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      {/* 消息滚动主区域 (Editorial Document Flow) */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center max-w-xl mx-auto text-center space-y-6 animate-fade-in py-12">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-xl shadow-brand-500/20 ring-1 ring-white/20">
-              <Sparkles className="w-7 h-7 text-white" />
+          <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto text-center space-y-8 animate-fade-in py-12">
+            <div className="w-12 h-12 rounded-2xl bg-ink-900 text-white flex items-center justify-center shadow-md">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-100 tracking-tight">
-                {sessionTitle || '你好！我是 RAG-GK 知识库助手'}
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-ink-900 tracking-tight">
+                {sessionTitle || 'RAG Studio 知识研读工作台'}
               </h2>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed max-w-md mx-auto">
-                已绑定知识库：<strong className="text-brand-400 font-medium">{selectedKB || '请先选择知识库'}</strong>。
-                支持标题面包屑注入、ChromaDB 向量 + BM25 混合召回与 Cross-Encoder 语义精排。
+              <p className="text-xs text-ink-500 leading-relaxed max-w-md mx-auto">
+                已挂载目标知识库：<strong className="text-ink-900 font-semibold">{selectedKB || '请先在左侧选择知识库'}</strong>。<br />
+                支持多文档关联、表格解析、标题层级面包屑注入与严密防幻觉生成。
               </p>
             </div>
 
-            {/* 快速提问建议 */}
-            <div className="w-full space-y-2 text-left pt-2">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1 flex items-center gap-1">
-                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                推荐提问示例：
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {sampleQuestions.map((q, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      if (!isStreaming) onSendMessage(q);
-                    }}
-                    className="p-3 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-700 text-xs text-slate-300 hover:text-slate-100 text-left transition-all hover:shadow-lg shadow-black/20 flex items-start gap-2"
-                  >
-                    <span className="text-brand-400 font-mono mt-0.5">•</span>
-                    <span>{q}</span>
-                  </button>
-                ))}
-              </div>
+            {/* 快速探索卡片 */}
+            <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2">
+              {sampleQuestions.map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onSendMessage(q)}
+                  className="p-3.5 rounded-xl bg-surface border border-border hover:border-stone-400 text-xs font-medium text-ink-900 hover:text-ink-900 transition-all shadow-card hover:shadow-float flex items-start justify-between group text-left"
+                >
+                  <span className="leading-relaxed pr-2">{q}</span>
+                  <ArrowUpRight className="w-4 h-4 text-ink-400 group-hover:text-ink-900 flex-shrink-0 mt-0.5 transition-colors" />
+                </button>
+              ))}
             </div>
           </div>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3.5 max-w-4xl mx-auto animate-fade-in ${
-                msg.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center flex-shrink-0 shadow-md ring-1 ring-white/20 mt-1">
-                  <Bot className="w-4 h-4" />
-                </div>
-              )}
+          <div className="max-w-3xl mx-auto space-y-8">
+            {messages.map((message) => {
+              const isUser = message.role === 'user';
+              const hasRefs = message.references && message.references.length > 0;
 
-              <div
-                className={`group relative rounded-2xl p-4 sm:p-5 max-w-[88%] sm:max-w-[82%] text-sm shadow-md ${
-                  msg.role === 'user'
-                    ? 'bg-brand-600 text-white rounded-br-none shadow-brand-600/20'
-                    : 'bg-slate-900/90 border border-slate-800/90 text-slate-200 rounded-bl-none shadow-black/30'
-                }`}
-              >
-                {/* 消息文本内容 */}
-                {msg.role === 'user' ? (
-                  <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
-                ) : (
-                  <div>
-                    <div className="markdown-body">
-                      {msg.content ? (
-                        renderMessageContent(msg.content, msg.references)
-                      ) : msg.isStreaming ? (
-                        <div className="flex items-center gap-2 text-slate-400 py-1">
-                          <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-                          <span className="text-xs">思考并检索知识库中...</span>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* 引用来源卡片条 */}
-                    {msg.references && msg.references.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-                        <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 mr-1">
-                          <BookOpen className="w-3 h-3 text-brand-400" />
-                          <span>参考资料 ({msg.references.length}):</span>
-                        </div>
-                        {msg.references.map((ref) => (
-                          <button
-                            key={ref.ref_id}
-                            onClick={() => onOpenCitation(ref.ref_id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 transition-all shadow-sm"
-                          >
-                            <span className="font-bold text-brand-400">[{ref.ref_id}]</span>
-                            <span className="truncate max-w-[120px]">{ref.doc_name}</span>
-                          </button>
-                        ))}
+              return (
+                <div key={message.id} className="space-y-3 animate-fade-in">
+                  {/* 用户提问渲染为典雅的章节标题 */}
+                  {isUser ? (
+                    <div className="pt-4 border-t border-border/80 first:border-t-0 first:pt-0">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-ink-400 uppercase tracking-wider mb-1.5">
+                        <span>提问</span>
+                        <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 复制按钮 */}
-                <button
-                  onClick={() => handleCopy(msg.id, msg.content)}
-                  className="absolute right-2 top-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-slate-800/60 text-slate-400 hover:text-slate-200 transition-all"
-                  title="复制内容"
-                >
-                  {copiedId === msg.id ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <h3 className="text-lg font-semibold text-ink-900 font-sans tracking-tight leading-snug">
+                        {message.content}
+                      </h3>
+                    </div>
                   ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
+                    /* AI 回答渲染为研究简报卡片 */
+                    <div className="bg-surface border border-border rounded-xl p-6 shadow-card space-y-4">
+                      
+                      {/* 顶部事实溯源横条 */}
+                      <div className="flex items-center justify-between pb-3.5 border-b border-border text-xs">
+                        <div className="flex items-center space-x-2 text-ink-700">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span className="font-medium">
+                            {hasRefs ? '已依据私域文档精准检索确认' : '通用逻辑回应'}
+                          </span>
+                        </div>
+                        {hasRefs && (
+                          <button
+                            onClick={() => onOpenCitation(message.references![0].ref_id)}
+                            className="flex items-center space-x-1 text-xs font-semibold text-ink-900 hover:text-stone-600 transition-colors"
+                          >
+                            <span>查看 {message.references!.length} 处引用源</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
 
-              {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center flex-shrink-0 shadow-md mt-1">
-                  <User className="w-4 h-4" />
+                      {/* Markdown 正文 */}
+                      <div className="markdown-body">
+                        {renderMessageContent(message.content)}
+                        {message.isStreaming && (
+                          <span className="inline-block w-2 h-4 bg-ink-900 animate-pulse ml-1 align-middle" />
+                        )}
+                      </div>
+
+                      {/* 底部动作工具栏 */}
+                      <div className="pt-3.5 border-t border-border flex items-center justify-between text-xs text-ink-500">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleCopy(message.id, message.content)}
+                            className="hover:text-ink-900 flex items-center space-x-1 transition-colors"
+                          >
+                            {copiedId === message.id ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-700">已复制</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>复制回答</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <span className="font-mono text-[11px]">
+                          {message.isStreaming ? '正在生成中...' : '已完成'}
+                        </span>
+                      </div>
+
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* 底部输入框 */}
-      <div className="p-4 sm:p-5 border-t border-slate-800/80 bg-slate-900/50 backdrop-blur-md flex-shrink-0">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto relative">
-          <textarea
-            ref={inputRef}
-            rows={2}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={!selectedKB}
-            placeholder={
-              selectedKB
-                ? '向知识库提问（支持多轮对话，Enter 发送，Shift+Enter 换行）...'
-                : '请先在左侧选择或创建一个知识库...'
-            }
-            className="w-full bg-slate-950 border border-slate-800 focus:border-brand-500 rounded-2xl pl-4 pr-24 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none shadow-xl"
-          />
+      {/* 底部悬浮极简指令输入坞 (Floating Studio Command Dock) */}
+      <div className="p-4 sm:p-6 bg-gradient-to-t from-paper via-paper to-transparent z-10 flex-shrink-0">
+        <div className="max-w-3xl mx-auto">
+          
+          <form onSubmit={handleSubmit} className="bg-surface border border-border focus-within:border-stone-500 rounded-2xl p-3 shadow-float transition-all">
+            <textarea
+              ref={textareaRef}
+              rows={2}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="向知识库提出深度问题，或输入指令（支持多文档关联推理）..."
+              className="w-full bg-transparent text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none resize-none px-2 leading-relaxed"
+            />
 
-          <div className="absolute right-3.5 bottom-4.5 flex items-center gap-2">
-            {isStreaming ? (
-              <button
-                type="button"
-                onClick={onStopGeneration}
-                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-lg shadow-rose-600/30 transition-all"
-              >
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span>停止</span>
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!input.trim() || !selectedKB}
-                className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-medium flex items-center gap-1.5 shadow-lg shadow-brand-600/30 transition-all"
-              >
-                <span>发送</span>
-                <CornerDownLeft className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <div className="flex items-center justify-between pt-2 px-1 text-xs border-t border-border/60">
+              <div className="flex items-center space-x-2 text-ink-500">
+                <span className="font-mono text-[11px]">Shift + Enter 换行</span>
+                <span>·</span>
+                <span className="font-mono text-[11px]">Enter 发送</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isStreaming ? (
+                  <button
+                    type="button"
+                    onClick={onStopGeneration}
+                    className="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-sm transition-all"
+                  >
+                    <StopCircle className="w-3.5 h-3.5" />
+                    <span>停止生成</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="bg-ink-900 hover:bg-accent-hover disabled:opacity-40 disabled:pointer-events-none text-white px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition-all"
+                  >
+                    <span>提问</span>
+                    <CornerDownLeft className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </form>
+
+          <div className="text-center text-[11px] text-ink-400 mt-2 font-serif italic">
+            严谨可信问答 · 每一处事实均由 BGE-Reranker 交叉注意力验证
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -267,7 +267,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {currentKB ? (
               <div 
                 onClick={() => setIsKBModalOpen(true)}
-                className="bg-surface border border-border hover:border-stone-400 rounded-xl p-3 shadow-card space-y-2 cursor-pointer transition-all group"
+                className="bg-surface border border-border hover:border-stone-400 rounded-xl p-3 shadow-card cursor-pointer transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 truncate">
@@ -279,10 +279,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span className="text-[10px] font-mono text-ink-700 bg-subtle px-1.5 py-0.5 rounded border border-border flex-shrink-0">
                     {currentKB.chunk_count} 切片
                   </span>
-                </div>
-                <div className="text-[11px] text-ink-500 flex justify-between items-center pt-1 border-t border-border/60">
-                  <span className="font-mono text-[10px]">NumPy + BM25</span>
-                  <span className="text-emerald-700 font-mono text-[10px] font-semibold">已就绪</span>
                 </div>
               </div>
             ) : (

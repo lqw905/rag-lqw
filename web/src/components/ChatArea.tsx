@@ -206,48 +206,53 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         const firstDoc = docNames.length > 0 ? docNames[0].replace(/\.(md|docx|txt)$/i, '') : '';
         const secondDoc = docNames.length > 1 ? docNames[1].replace(/\.(md|docx|txt)$/i, '') : '';
 
+        const shortStr = (s: string) => s.length > 10 ? s.slice(0, 10) + '...' : s;
+        const d1 = shortStr(firstDoc);
+        const d2 = shortStr(secondDoc);
+        const kb = shortStr(selectedKB);
+
         // 1. 文档概要类问题
         if (firstDoc) {
-          generated.push(`请全面总结《${firstDoc}》的核心要点与关键结论。`);
+          generated.push(`总结《${d1}》的核心要点`);
         } else {
-          generated.push(`请全面概述知识库「${selectedKB}」包含的主要内容。`);
+          generated.push(`概述「${kb}」的主要内容`);
         }
 
         // 2. 核心细节 / 背景经历 / 规范解析
         if (headers.length > 0) {
-          generated.push(`请详细阐述【${headers[0]}】的具体细节与关键信息。`);
+          generated.push(`简述【${shortStr(headers[0])}】的具体细节`);
         } else if (secondDoc) {
-          generated.push(`解析《${secondDoc}》中涉及的重点内容与核心规范。`);
+          generated.push(`解析《${d2}》的核心规范`);
         } else if (firstDoc) {
-          generated.push(`梳理《${firstDoc}》中的核心技能、主要经历与关键成果。`);
+          generated.push(`梳理《${d1}》的关键信息`);
         } else {
-          generated.push(`提炼本知识库中的核心业务流程与设计规范。`);
+          generated.push(`提炼知识库的核心业务流程`);
         }
 
         // 3. 术语 / 对比 / 知识图谱
         if (docNames.length >= 2) {
-          generated.push(`对比《${firstDoc}》与《${secondDoc}》在核心内容上的异同点。`);
+          generated.push(`对比《${d1}》与《${d2}》`);
         } else if (headers.length >= 2) {
-          generated.push(`围绕【${headers[1]}】的内容，梳理其关键流程与注意事项。`);
+          generated.push(`梳理【${shortStr(headers[1])}】的注意事项`);
         } else {
-          generated.push(`基于知识库「${selectedKB}」，梳理一份核心术语与关键概念清单。`);
+          generated.push(`整理知识库的核心术语清单`);
         }
 
         // 4. 常见问题 / 综合问答 / 实战应用
         if (headers.length >= 3) {
-          generated.push(`在涉及【${headers[2]}】的场景下，有哪些最佳实践或处置建议？`);
+          generated.push(`列举【${shortStr(headers[2])}】的最佳实践`);
         } else if (firstDoc) {
-          generated.push(`针对《${firstDoc}》的核心内容提出 3 个深度问题并给出解答。`);
+          generated.push(`解答《${d1}》的常见疑问`);
         } else {
-          generated.push(`请根据当前知识库的资料，解答常见疑问并提供完整参考出处。`);
+          generated.push(`解答疑问并提供相关出处`);
         }
 
         // 兜底保障：严格确保有且仅有 4 个完整且互不重复的示例问题
         const fallbacks = [
-          `提炼当前知识库的结构框架与核心要义。`,
-          `针对知识库内容进行深度问答与多角度关联推理。`,
-          `梳理关键时间线、操作流程与标准规范清单。`,
-          `解答常见技术或业务疑问并标注权威原文出处。`,
+          `提炼当前知识库核心框架`,
+          `针对知识库内容深度提问`,
+          `梳理关键操作与标准规范`,
+          `解答业务疑问并标注原文`,
         ];
         for (const fb of fallbacks) {
           if (!generated.includes(fb) && generated.length < 4) {

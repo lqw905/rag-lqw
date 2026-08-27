@@ -44,7 +44,7 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
         title="点击背景关闭抽屉"
       />
 
-      {/* 右侧滑出引用档案卡片 - 拓宽至 560px 舒适阅读区 */}
+      {/* 右侧滑出引用档案卡片 */}
       <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[540px] md:w-[580px] max-w-[100vw] bg-surface border-l border-border shadow-popover flex flex-col animate-slide-left">
         
         {/* Drawer Header */}
@@ -67,26 +67,25 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
           </button>
         </div>
 
-        {/* Reference Tabs (拓宽并隐藏多余滚动条) */}
-        <div className="px-5 py-2.5 border-b border-border bg-paper flex items-center gap-2 overflow-x-auto flex-shrink-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {/* Reference Segmented Tabs: 紧凑清晰的分段选择器，彻底解决文件名过长撑爆顶栏的问题 */}
+        <div className="px-5 py-2.5 border-b border-border bg-paper flex items-center gap-1.5 overflow-x-auto scrollbar-none [scrollbar-width:none]">
           {references.map((ref) => {
             const isSelected = currentRef.ref_id === ref.ref_id;
             return (
               <button
                 key={ref.ref_id}
                 onClick={() => onSelectRef(ref.ref_id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap flex-shrink-0 ${
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer min-w-0 ${
                   isSelected
                     ? 'bg-ink-900 text-white shadow-card ring-1 ring-ink-900'
                     : 'bg-surface text-ink-700 hover:text-ink-900 hover:bg-subtle border border-border shadow-card'
                 }`}
-                title={ref.doc_name}
+                title={`[切片 #${ref.ref_id}] ${ref.doc_name} (匹配度: ${(ref.score * 100).toFixed(1)}%)`}
               >
-                <span className={`font-mono text-[11px] px-1 rounded ${isSelected ? 'bg-white/20' : 'bg-subtle text-ink-500'}`}>
-                  REF #{ref.ref_id}
-                </span>
-                <span className="truncate max-w-[140px] text-xs">{ref.doc_name}</span>
-                <span className={`text-[10px] font-mono font-medium ${isSelected ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                <span className="font-mono text-xs whitespace-nowrap">#{ref.ref_id}</span>
+                <span className={`text-[10px] font-mono px-1 rounded whitespace-nowrap ${
+                  isSelected ? 'bg-white/20 text-white' : 'text-emerald-700 bg-emerald-50'
+                }`}>
                   {(ref.score * 100).toFixed(0)}%
                 </span>
               </button>
@@ -96,13 +95,18 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
 
         {/* Main Drawer Content */}
         <div className="p-6 flex-1 overflow-y-auto space-y-5">
-          {/* Source Meta Card - 完整展示文件名与路径，不截断 */}
+          {/* Source Meta Card - 完整展示文件名与路径，绝不截断 */}
           <div className="p-4.5 rounded-xl bg-paper border border-border space-y-3.5 shadow-card">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wider">来源文档</span>
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wider flex items-center gap-1.5">
+                <span>来源文档</span>
+                <span className="font-mono text-ink-700 bg-subtle px-1.5 py-0.2 rounded border border-border text-[10px]">
+                  REF #{currentRef.ref_id}
+                </span>
+              </span>
               <div className={`text-[11px] px-2.5 py-0.5 rounded-full border font-mono font-semibold flex items-center gap-1 ${getScoreBadge(currentRef.score)}`}>
                 <Award className="w-3.5 h-3.5" />
-                <span>综合相关度: {(currentRef.score * 100).toFixed(1)}%</span>
+                <span>相关度: {(currentRef.score * 100).toFixed(1)}%</span>
               </div>
             </div>
 

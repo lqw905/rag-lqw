@@ -245,13 +245,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* 新建研读对话主按钮 */}
           <button
             onClick={onCreateSession}
-            className="w-full bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between shadow-card hover:border-stone-400 transition-all group"
+            className="w-full bg-surface hover:bg-subtle text-ink-900 border border-border rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-center gap-2 shadow-card hover:border-stone-400 transition-all group"
           >
-            <span className="flex items-center space-x-2">
-              <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
-              <span>新建研读对话</span>
-            </span>
-            <kbd className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
+            <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
+            <span>新建研读对话</span>
           </button>
 
           {/* 挂载知识库卡片 */}

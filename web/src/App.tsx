@@ -107,10 +107,10 @@ export const App: React.FC = () => {
     loadKBs();
   }, []);
 
-  // Filter sessions for the currently selected Knowledge Base
+  // Filter sessions for the currently selected Knowledge Base (Hide empty sessions from Sidebar)
   const currentKBSessions = useMemo(() => {
     if (!selectedKB) return [];
-    return sessions.filter((s) => s.kb_name === selectedKB);
+    return sessions.filter((s) => s.kb_name === selectedKB && s.messages.length > 0);
   }, [sessions, selectedKB]);
 
   // Active Session Object

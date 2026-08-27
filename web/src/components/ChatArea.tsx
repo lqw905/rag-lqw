@@ -15,7 +15,8 @@ import {
   ArrowUpRight,
   StopCircle
 } from 'lucide-react';
-import type { ChatMessage, ReferenceItem } from '../types';
+import type { ChatMessage, ReferenceItem, ChunkDetail } from '../types';
+import { api } from '../services/api';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -159,12 +160,103 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return children;
   };
 
-  const sampleQuestions = [
-    '楚渊的个人终端代码是多少？胸腔核心有什么秘密？',
-    '义体修士触发 FLT-4099 故障码时的紧急处置 SOP 是什么？',
-    '在天阙坍缩之役中太苍重工使用的终极战略武器是什么？',
-    '对比“天威裁决者”和“周天八卦号”星舰的性能参数差异。',
-  ];
+  // 动态根据当前选中的知识库切片内容生成相关联的探索问题
+  const [dynamicQuestions, setDynamicQuestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selectedKB) {
+      setDynamicQuestions([
+        '请在左侧选择或创建一个目标知识库',
+        '系统支持哪些文档格式的解析与切片？',
+        'NumPy 向量检索与 BM25 是如何多路融合的？',
+        '如何调用 Reranker 模块对候选切片进行二次精排？',
+      ]);
+      return;
+    }
+
+    let isMounted = true;
+    api
+      .listChunks(selectedKB, 20, 0)
+      .then((res: { total?: number; chunks?: ChunkDetail[] }) => {
+        if (!isMounted) return;
+        const chunks: ChunkDetail[] = res.chunks || [];
+        if (chunks.length === 0) {
+          setDynamicQuestions([
+            `知识库「${selectedKB}」暂无切片文档，请先在左侧上传文档`,
+            '支持 Word (.docx)、Markdown (.md) 和纯文本 (.txt) 文件导入',
+            '系统会自动提取 Word 标题层级转为 Markdown 面包屑',
+            '表格将自动还原为结构化 Markdown 表格以防数据断裂',
+          ]);
+          return;
+        }
+
+        // 提取所有不同的文档名和有意义的面包屑标题
+        const docNames: string[] = Array.from(new Set(chunks.map((c: ChunkDetail) => c.doc_name).filter(Boolean)));
+        const headers: string[] = Array.from(
+          new Set(
+            chunks
+              .map((c: ChunkDetail) => c.header_path)
+              .filter(Boolean)
+              .map((h: string) => h.replace(/^.*?>\s*/, '').trim()) // 提取叶子标题
+              .filter((h: string) => h.length > 2)
+          )
+        );
+
+        const generated: string[] = [];
+
+        // 1. 文档概要类问题
+        if (docNames.length > 0) {
+          const firstDoc = docNames[0].replace(/\.(md|docx|txt)$/i, '');
+          generated.push(`请全面总结《${firstDoc}》的核心要点与关键结论。`);
+        }
+
+        // 2. 章节细节类问题
+        if (headers.length > 0) {
+          const firstHeader = headers[0];
+          generated.push(`请详细阐述【${firstHeader}】的具体规定与实现机制。`);
+        } else if (docNames.length > 1) {
+          const secondDoc = docNames[1].replace(/\.(md|docx|txt)$/i, '');
+          generated.push(`解析《${secondDoc}》中涉及的重点概念与核心规范。`);
+        }
+
+        // 3. 对比或深层关联类问题
+        if (docNames.length >= 2) {
+          const d1 = docNames[0].replace(/\.(md|docx|txt)$/i, '');
+          const d2 = docNames[1].replace(/\.(md|docx|txt)$/i, '');
+          generated.push(`对比《${d1}》与《${d2}》在核心内容上的异同点。`);
+        } else if (headers.length >= 2) {
+          const h2 = headers[1];
+          generated.push(`围绕【${h2}】的内容，梳理其操作步骤与关键注意事项。`);
+        } else {
+          generated.push(`基于知识库「${selectedKB}」，梳理一份核心术语与关键概念清单。`);
+        }
+
+        // 4. 故障排查/实战场景类问题
+        if (headers.length >= 3) {
+          const h3 = headers[2];
+          generated.push(`在涉及【${h3}】的场景下，有哪些最佳实践或处置规程？`);
+        } else {
+          generated.push(`请根据当前知识库的资料，解答常见疑问并提供完整参考出处。`);
+        }
+
+        setDynamicQuestions(generated.slice(0, 4));
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setDynamicQuestions([
+          `请全面概述知识库「${selectedKB}」包含的主要内容。`,
+          `提炼本知识库中的核心业务流程与设计规范。`,
+          `查找本知识库中的常见问题与标准处置 SOP。`,
+          `对比分析本知识库不同章节间的逻辑关联。`,
+        ]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedKB]);
+
+  const sampleQuestions = dynamicQuestions;
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-paper overflow-hidden relative">

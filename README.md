@@ -1,15 +1,15 @@
-# 🚀 RAG-LQW: 轻量级企业级混合检索知识库问答系统
+# 🚀 RAG-GK：轻量级企业级混合检索知识库问答系统
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?logo=python&logoColor=white" alt="Python Version" />
   <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/React-18.3+-61DAFB?logo=react&logoColor=black" alt="React" />
-  <img src="https://img.shields.io/badge/Vite-5.0+-646CFF?logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/ChromaDB-VectorStore-orange" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/React-19.2+-61DAFB?logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-8.2+-646CFF?logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/NumPy-VectorStore-4D77CF?logo=numpy&logoColor=white" alt="NumPy VectorStore" />
   <img src="https://img.shields.io/badge/MCP-Protocol%20Ready-purple" alt="MCP Ready" />
 </p>
 
-> **RAG-LQW** 是一个基于 **FastAPI + React 18 + ChromaDB + BM25 + Cross-Encoder Reranker** 构建的高性能、极简架构 RAG 知识库问答系统，支持智能标题层级切片、多会话隔离管理、交互式引用溯源与原生 MCP Server 协议。
+> **RAG-GK** 是一个基于 **FastAPI + React 19 + NumPy 本地向量索引 + BM25 + Cross-Encoder Reranker** 构建的轻量级 RAG 知识库问答系统，支持智能标题层级切片、多会话隔离管理、交互式引用溯源与原生 MCP Server 协议。
 
 ---
 
@@ -18,7 +18,7 @@
 1. **统一文档结构化解析**：支持 `.docx`、`.txt`、`.md` 毫秒级文本解析，自动提取 Word 标题层级和表格为标准 Markdown 结构。
 2. **标题面包屑智能切片**：自适应段落 Token 预算切片，自动在每个分块前注入父级标题面包屑路径（如 `[上下文: 部署 > 环境要求]`），彻底消除上下文断裂。
 3. **混合多路召回 + RRF 融合**：
-   - **Dense 向量检索**：基于 ChromaDB 持久化向量库与余弦相似度检索；
+   - **Dense 向量检索**：基于 NumPy 归一化向量矩阵、本地持久化与余弦相似度检索；
    - **Sparse 稀疏检索**：基于 BM25Plus 算法与 Jieba 中文分词检索专有名词与精确匹配；
    - **RRF 融合**：自动融合双路排名，筛选出 Top-20 高价值候选。
 4. **Cross-Encoder 语义精排 & 噪音过滤**：集成 BGE-Reranker API 对候选块深度打分，前置意图识别过滤闲聊，置信度及格线剔除无关噪音。

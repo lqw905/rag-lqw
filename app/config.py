@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,7 +37,10 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
 
     # Storage & Chunking Settings
-    CHROMA_PERSIST_DIR: str = "./data/chroma_db"
+    VECTOR_PERSIST_DIR: str = Field(
+        default="./data/vector_indices",
+        validation_alias=AliasChoices("VECTOR_PERSIST_DIR", "CHROMA_PERSIST_DIR"),
+    )
     BM25_PERSIST_DIR: str = "./data/bm25_indices"
     CHUNK_SIZE: int = 600
     CHUNK_OVERLAP: int = 80
@@ -64,5 +67,5 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Ensure storage directories exist
-os.makedirs(settings.CHROMA_PERSIST_DIR, exist_ok=True)
+os.makedirs(settings.VECTOR_PERSIST_DIR, exist_ok=True)
 os.makedirs(settings.BM25_PERSIST_DIR, exist_ok=True)

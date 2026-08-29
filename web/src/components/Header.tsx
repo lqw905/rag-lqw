@@ -1,11 +1,9 @@
 import React from 'react';
 import { BookOpen, Sparkles, Search, PanelLeft } from 'lucide-react';
-import type { HealthInfo } from '../types';
 
 interface HeaderProps {
   activeTab: 'chat' | 'playground';
   setActiveTab: (tab: 'chat' | 'playground') => void;
-  healthInfo: HealthInfo | null;
   isSidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
 }
@@ -13,7 +11,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ 
   activeTab, 
   setActiveTab, 
-  healthInfo,
   isSidebarCollapsed = false,
   onToggleSidebar
 }) => {

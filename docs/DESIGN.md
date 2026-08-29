@@ -10,7 +10,7 @@
    - 聚焦支持 `.docx`, `.txt`, `.md` 格式，纯 CPU 毫秒级解析；
    - LLM、Embedding、Reranker 全部通过通用 API（OpenAI 兼容协议）接入，实现计算与存储解耦。
 3. **单节点持久化存储**：
-   - 向量检索选用 **ChromaDB**（嵌入式持久化存储）；
+   - 向量检索使用 **NumPy 归一化向量矩阵**，并通过 pickle 进行单节点本地持久化；
    - 稀疏关键词检索选用 **BM25**（基于内存与磁盘轻量序列化持久化）。
 
 ---
@@ -41,7 +41,7 @@
                 ▼                          ┌────────────────┐                     ┌─────────────────┐
 ┌───────────────────────────────┐          │ Dense 向量检索 │                     │ Sparse 关键词检索│
 │ 2. 标题层级切片器              │          │ (Embedding API │                     │ (BM25 Indexer)  │
-│    (MarkdownHeaderSplitter)   │          │  + ChromaDB)   │                     └────────┬────────┘
+│    (MarkdownHeaderSplitter)   │          │  + NumPy Index)│                     └────────┬────────┘
 │    - 面包屑标题注入           │          └───────┬────────┘                              │
 │    - Token 预算自适应合并     │                  │                                       │
 └───────────────┬───────────────┘                  └───────────────────┬───────────────────┘
@@ -82,7 +82,7 @@
 | **API 服务框架** | FastAPI + Uvicorn + Pydantic v2 | 异步高性能，自动生成 OpenAPI 文档，极简数据验证 |
 | **文档解析库** | `python-docx` + 标准字符编码自动探测 | 纯 Python，毫秒级将 Word/文本转为统一 Markdown 结构 |
 | **分块与分词** | 自研 `MarkdownHeaderSplitter` + `tiktoken` | 精确控制 Token 预算，保留父子标题上下文，避免语义碎片化 |
-| **向量数据库** | **ChromaDB** | 零运维依赖、轻量嵌入式（支持本地目录持久化），查询速度快 |
+| **向量索引** | **NumPy + pickle** | 零服务依赖，以归一化矩阵点积完成余弦检索，适合单节点轻量部署 |
 | **稀疏检索** | **rank_bm25** + 中文分词（Jieba） | 补充专有名词、精确编码、数字查找的短板，与向量互补 |
 | **Embedding API** | OpenAI 兼容接口 | 支持 OpenAI `text-embedding-3`, 通义千问, 智谱, SiliconFlow 等 |
 | **Rerank API** | Cross-Encoder Reranker API | 接入 SiliconFlow / BGE / Jina Rerank API，极大提升 Top-5 准确率 |
@@ -109,7 +109,7 @@
 - **Token 预算合并**：以自然段落为基本单位，依据 `chunk_size`（推荐 500~800 Tokens）和 `chunk_overlap`（推荐 10%~15%）进行自适应合并，避免在句子中间硬截断。
 
 ### 4.3 检索机制：双路召回 + RRF 融合 + Cross-Encoder 重排
-1. **Dense 检索**：Query 通过 Embedding API 编码后在 ChromaDB 中检索余弦距离最近的 Top-$K_1$（如 20 个）。
+1. **Dense 检索**：Query 通过 Embedding API 编码后，与本地归一化向量矩阵计算余弦相似度并选取 Top-$K_1$（如 20 个）。
 2. **Sparse 检索**：Query 分词后在当前知识库的 BM25 倒排索引中检索得分最高的 Top-$K_2$（如 20 个）。
 3. **混合融合（Reciprocal Rank Fusion, RRF）**：
    $$RRF\_Score(d) = \frac{1}{60 + \text{Rank}_{dense}(d)} + \frac{1}{60 + \text{Rank}_{sparse}(d)}$$
@@ -125,7 +125,7 @@
   系统运行需要 Python 3.10 以上环境...
 
   [文档2] (标题: 架构设计 > 向量存储)
-  ChromaDB 用于存储文档向量...
+  本地 NumPy 向量索引用于存储并检索文档向量...
   ```
 - **生成约束**：在 System Prompt 中要求 LLM：
   1. 严格基于参考资料回答；
@@ -138,7 +138,7 @@
 
 ```
 rag-gk/
-├── .gitignore               # Git 忽略配置（已忽略 docs/, chroma_db/, .env 等）
+├── .gitignore               # Git 忽略配置（已忽略本地索引、.env 等运行数据）
 ├── requirements.txt         # 核心 Python 依赖
 ├── README.md                # 项目简介与启动指南
 ├── config.py                # 全局配置管理（Pydantic BaseSettings + .env）
@@ -154,7 +154,7 @@ rag-gk/
 │   │   ├── loader.py        # 统一文档加载器 (.docx, .txt, .md -> Markdown)
 │   │   ├── splitter.py      # Markdown 标题面包屑自适应分块器
 │   │   ├── bm25.py          # BM25 稀疏检索索引构建与持久化
-│   │   ├── vector_store.py  # ChromaDB 向量库封装与管理
+│   │   ├── vector_store.py  # NumPy 向量索引与 pickle 持久化
 │   │   ├── retriever.py     # 混合多路召回 + RRF 融合
 │   │   ├── reranker.py      # Rerank API 封装与重排过滤
 │   │   └── generator.py     # Prompt 组装与 LLM 对话生成（流式生成）

@@ -106,7 +106,7 @@ async def chat_completions(req: ChatCompletionRequest):
 
     # 3. 非流式响应分支
     try:
-        gen_result = generator.generate(
+        gen_result = generator.generate_sync(
             query=query,
             retrieved_chunks=retrieved_chunks,
             chat_history=history_dicts

@@ -5,7 +5,7 @@ import { ChatArea } from './components/ChatArea';
 import { CitationDrawer } from './components/CitationDrawer';
 import { ChunkModal } from './components/ChunkModal';
 import { Playground } from './components/Playground';
-import type { KnowledgeBase, ChatSession, ChatMessage, ReferenceItem, HealthInfo } from './types';
+import type { KnowledgeBase, ChatSession, ChatMessage, ReferenceItem } from './types';
 import { api } from './services/api';
 
 const STORAGE_KEY = 'rag_gk_sessions_v1';
@@ -16,7 +16,6 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'playground'>('chat');
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [selectedKB, setSelectedKB] = useState<string>('');
-  const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
 
   // Sidebar Collapsible & Resizable State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -89,7 +88,7 @@ export const App: React.FC = () => {
     }
   }, [sessions]);
 
-  // 1. Initial Load: Health & Knowledge Bases
+  // 1. Initial Load: Knowledge Bases
   const loadKBs = async () => {
     try {
       const kbs = await api.listKnowledgeBases();
@@ -103,7 +102,6 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    api.getHealth().then(setHealthInfo).catch(console.warn);
     loadKBs();
   }, []);
 
@@ -357,7 +355,6 @@ export const App: React.FC = () => {
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        healthInfo={healthInfo}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={activeTab === 'chat' ? handleToggleSidebar : undefined}
       />

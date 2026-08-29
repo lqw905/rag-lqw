@@ -154,3 +154,44 @@ def test_fastapi_kb_lifecycle():
     # 3. 删除知识库
     del_res = client.delete(f"/api/v1/kb/{kb_name}")
     assert del_res.status_code == 200
+
+
+def test_fastapi_non_stream_chat(monkeypatch):
+    """非流式分支应调用同步生成器并返回标准 JSON。"""
+    monkeypatch.setattr(
+        "app.api.chat_router.retriever.retrieve",
+        lambda **kwargs: []
+    )
+    monkeypatch.setattr(
+        "app.api.chat_router.generator.generate_sync",
+        lambda **kwargs: {
+            "answer": "测试回答",
+            "references": [],
+            "usage": {
+                "prompt_tokens": 1,
+                "completion_tokens": 2,
+                "total_tokens": 3,
+            },
+        }
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/chat/completions",
+        json={
+            "kb_name": "test_kb",
+            "query": "测试问题",
+            "stream": False,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "answer": "测试回答",
+        "references": [],
+        "usage": {
+            "prompt_tokens": 1,
+            "completion_tokens": 2,
+            "total_tokens": 3,
+        },
+    }

@@ -148,7 +148,7 @@ class VectorCollection:
 
 class VectorStoreManager:
     """全局向量数据库管理器（轻量、跨平台稳定、高性能）"""
-    def __init__(self, persist_dir: str = settings.CHROMA_PERSIST_DIR):
+    def __init__(self, persist_dir: str = settings.VECTOR_PERSIST_DIR):
         self.persist_dir = persist_dir
         os.makedirs(self.persist_dir, exist_ok=True)
         self.collections: Dict[str, VectorCollection] = {}

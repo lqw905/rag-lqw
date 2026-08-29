@@ -45,7 +45,7 @@ TOOLS = [
     },
     {
         "name": "search_knowledge_base",
-        "description": "在指定的项目/企业知识库中进行混合多路召回（ChromaDB 向量 + BM25 关键词 + BGE 语义精排），返回最相关的上下文切片、标题面包屑、来源文档和相关度得分。",
+        "description": "在指定的项目/企业知识库中进行混合多路召回（NumPy 向量 + BM25 关键词 + BGE 语义精排），返回最相关的上下文切片、标题面包屑、来源文档和相关度得分。",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -212,7 +212,7 @@ def handle_ask_knowledge_base(args: Dict[str, Any]) -> str:
     if references:
         lines.append("\n\n---\n#### 📌 引用参考来源：")
         for ref in references:
-            idx = ref.get("index", "")
+            idx = ref.get("ref_id", "")
             doc = ref.get("doc_name", "")
             hdr = ref.get("header_path", "")
             scr = ref.get("score", 0.0)

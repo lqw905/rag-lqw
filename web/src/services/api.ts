@@ -102,6 +102,18 @@ export const api = {
     onError: (err: string) => void;
     signal?: AbortSignal;
   }) {
+    let settled = false;
+    const finish = (totalTokens?: number) => {
+      if (settled) return;
+      settled = true;
+      params.onDone(totalTokens);
+    };
+    const fail = (message: string) => {
+      if (settled) return;
+      settled = true;
+      params.onError(message);
+    };
+
     try {
       const response = await fetch('/api/v1/chat/completions', {
         method: 'POST',
@@ -119,12 +131,12 @@ export const api = {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({ detail: 'Chat request failed' }));
-        params.onError(err.detail || '对话请求失败');
+        fail(err.detail || '对话请求失败');
         return;
       }
 
       if (!response.body) {
-        params.onError('ReadableStream not supported by browser');
+        fail('ReadableStream not supported by browser');
         return;
       }
 
@@ -151,9 +163,9 @@ export const api = {
             } else if (event.type === 'content' || event.type === 'delta') {
               params.onDelta(event.delta || event.content || '');
             } else if (event.type === 'done') {
-              params.onDone(event.total_tokens);
+              finish(event.total_tokens);
             } else if (event.type === 'error') {
-              params.onError(event.message || event.error || 'LLM 生成错误');
+              fail(event.message || event.error || 'LLM 生成错误');
             }
           } catch (e) {
             console.warn('Failed to parse SSE line:', jsonStr, e);
@@ -161,12 +173,12 @@ export const api = {
         }
       }
 
-      params.onDone();
+      finish();
     } catch (e: any) {
       if (e.name === 'AbortError') {
-        params.onDone();
+        finish();
       } else {
-        params.onError(e.message || '网络连接异常');
+        fail(e.message || '网络连接异常');
       }
     }
   },

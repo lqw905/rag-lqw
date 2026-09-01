@@ -59,12 +59,12 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-4xl max-h-[88vh] bg-paper border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in"
+        className="w-full max-w-4xl max-h-[76vh] bg-paper border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in"
       >
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-border/80 flex items-center justify-between flex-shrink-0 bg-surface/50">

@@ -10,7 +10,10 @@ import {
   Edit3,
   Search,
   X,
-  ChevronDown
+  ChevronDown,
+  FileText,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -56,6 +59,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isCreateKBModalOpen, setIsCreateKBModalOpen] = useState(false);
   const [newKBName, setNewKBName] = useState('');
   const [newKBDesc, setNewKBDesc] = useState('');
+  const [createKBFiles, setCreateKBFiles] = useState<File[]>([]);
+  const [isCreateDragging, setIsCreateDragging] = useState(false);
+  const createFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dedicated Upload Modal State (for existing KBs)
+  const [uploadModalKB, setUploadModalKB] = useState<string | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [isUploadDragging, setIsUploadDragging] = useState(false);
+  const dedicatedFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Global Submitting / Status feedback inside modals
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // KB List Collapsible State (默认收起)
   const [isKBListCollapsed, setIsKBListCollapsed] = useState<boolean>(() => {
@@ -79,12 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  // Upload State
-  const [isUploading, setIsUploading] = useState(false);
-  const [targetUploadKB, setTargetUploadKB] = useState<string | null>(null);
+  // Quick drag-and-drop state on sidebar items
   const [dragOverKB, setDragOverKB] = useState<string | null>(null);
-  const [uploadMessage, setUploadMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Session Search & Rename State
   const [sessionSearch, setSessionSearch] = useState('');
@@ -95,11 +107,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const isResizingRef = useRef(false);
 
-  // Global shortcut: ⌘K or Ctrl+K to create a new session; ⌘B or Ctrl+B to toggle sidebar; Escape to close modal
+  // Global shortcut: ⌘K / Ctrl+K to create a new session; ⌘B / Ctrl+B to toggle sidebar; Escape to close modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isCreateKBModalOpen) {
-        setIsCreateKBModalOpen(false);
+      if (e.key === 'Escape') {
+        if (isCreateKBModalOpen) setIsCreateKBModalOpen(false);
+        if (uploadModalKB) setUploadModalKB(null);
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -112,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen]);
+  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen, uploadModalKB]);
 
   // Handle Drag Resizing
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -177,20 +190,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return { todaySessions: todayList, earlierSessions: earlierList };
   }, [filteredSessions]);
 
+  // Filter supported files helper
+  const filterSupportedFiles = (files: FileList | File[]) => {
+    return Array.from(files).filter((f) => {
+      const ext = f.name.toLowerCase();
+      return ext.endsWith('.docx') || ext.endsWith('.txt') || ext.endsWith('.md');
+    });
+  };
+
+  // Handle Create KB (with optional initial files)
   const handleCreateKB = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKBName.trim()) return;
 
+    setIsSubmitting(true);
+    setModalFeedback(null);
+
     try {
-      await api.createKnowledgeBase(newKBName.trim(), newKBDesc.trim());
-      setIsCreateKBModalOpen(false);
-      const createdName = newKBName.trim();
+      const kbName = newKBName.trim();
+      await api.createKnowledgeBase(kbName, newKBDesc.trim());
+
+      // If initial documents were chosen, upload and index them
+      if (createKBFiles.length > 0) {
+        const resList = await api.uploadDocuments(kbName, createKBFiles);
+        const totalChunks = resList.reduce((acc: number, curr: any) => acc + (curr.chunk_count || 0), 0);
+        console.log(`Uploaded ${createKBFiles.length} docs, generated ${totalChunks} chunks`);
+      }
+
+      onRefreshKBs();
+      onSelectKB(kbName);
+
+      // Reset and close
       setNewKBName('');
       setNewKBDesc('');
-      onRefreshKBs();
-      onSelectKB(createdName);
+      setCreateKBFiles([]);
+      setIsCreateKBModalOpen(false);
     } catch (err: any) {
-      alert(err.message || '创建知识库失败');
+      setModalFeedback({ text: err.message || '创建知识库失败', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle Dedicated Upload to an existing KB
+  const handleDedicatedUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadModalKB) return;
+    if (uploadFiles.length === 0) {
+      setModalFeedback({ text: '请先选择要上传的文档文件', type: 'error' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setModalFeedback(null);
+
+    try {
+      const resList = await api.uploadDocuments(uploadModalKB, uploadFiles);
+      const totalChunks = resList.reduce((acc: number, curr: any) => acc + (curr.chunk_count || 0), 0);
+      const failed = resList.filter((r: any) => (r.chunk_count || 0) === 0);
+
+      if (failed.length > 0 && totalChunks === 0) {
+        setModalFeedback({
+          text: `未生成有效切片：${failed.map((f: any) => f.message || '未知原因').join('; ')}`,
+          type: 'error',
+        });
+      } else {
+        setModalFeedback({
+          text: `成功导入 ${uploadFiles.length} 个文档，生成 ${totalChunks} 个有效索引切片！`,
+          type: 'success',
+        });
+        onRefreshKBs();
+        setTimeout(() => {
+          setUploadFiles([]);
+          setUploadModalKB(null);
+          setModalFeedback(null);
+        }, 1200);
+      }
+    } catch (err: any) {
+      setModalFeedback({ text: err.message || '上传处理失败', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -209,63 +288,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
     } catch (err: any) {
       alert(err.message || '删除失败');
-    }
-  };
-
-  const triggerUploadForKB = (kb_name: string) => {
-    setTargetUploadKB(kb_name);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileUpload = async (files: FileList | File[], targetKB?: string) => {
-    const activeKB = targetKB || targetUploadKB || selectedKB;
-    if (!activeKB) {
-      alert('请先选择或创建一个知识库！');
-      return;
-    }
-    const fileArray = Array.from(files).filter((f) => {
-      const ext = f.name.toLowerCase();
-      return ext.endsWith('.docx') || ext.endsWith('.txt') || ext.endsWith('.md');
-    });
-
-    if (fileArray.length === 0) {
-      setUploadMessage({ text: '仅支持上传 .docx, .txt, .md 文件', type: 'error' });
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadMessage(null);
-
-    try {
-      const resList = await api.uploadDocuments(activeKB, fileArray);
-      const totalChunks = resList.reduce((acc: number, curr: any) => acc + (curr.chunk_count || 0), 0);
-      const failed = resList.filter((r: any) => (r.chunk_count || 0) === 0);
-
-      if (failed.length > 0 && totalChunks === 0) {
-        setUploadMessage({
-          text: `导入未生成有效切片：${failed.map((f: any) => f.message || '未知原因').join('; ')}`,
-          type: 'error',
-        });
-      } else if (failed.length > 0) {
-        setUploadMessage({
-          text: `部分成功 (${totalChunks} 切片)，${failed.length} 个未切片：${failed.map((f: any) => f.file_name).join('; ')}`,
-          type: 'error',
-        });
-      } else {
-        setUploadMessage({
-          text: `成功向「${activeKB}」导入 ${fileArray.length} 个文档 (${totalChunks} 切片)！`,
-          type: 'success',
-        });
-      }
-      onRefreshKBs();
-    } catch (err: any) {
-      setUploadMessage({ text: err.message || '上传处理失败', type: 'error' });
-    } finally {
-      setIsUploading(false);
-      setTargetUploadKB(null);
     }
   };
 
@@ -317,7 +339,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </button>
                 <button 
-                  onClick={() => setIsCreateKBModalOpen(true)}
+                  onClick={() => {
+                    setModalFeedback(null);
+                    setIsCreateKBModalOpen(true);
+                  }}
                   className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer shrink-0"
                   title="新建知识库"
                 >
@@ -331,7 +356,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5 animate-fade-in">
                   {knowledgeBases.length === 0 ? (
                     <div 
-                      onClick={() => setIsCreateKBModalOpen(true)}
+                      onClick={() => {
+                        setModalFeedback(null);
+                        setIsCreateKBModalOpen(true);
+                      }}
                       className="bg-surface border border-dashed border-border rounded-xl px-3 py-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400 transition-colors"
                     >
                       + 点击新建首个知识库
@@ -353,8 +381,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             e.preventDefault();
                             setDragOverKB(null);
                             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                              onSelectKB(kb.kb_name);
-                              handleFileUpload(e.dataTransfer.files, kb.kb_name);
+                              const validFiles = filterSupportedFiles(e.dataTransfer.files);
+                              if (validFiles.length > 0) {
+                                setUploadModalKB(kb.kb_name);
+                                setUploadFiles(validFiles);
+                                setModalFeedback(null);
+                              }
                             }
                           }}
                           className={`group/kb rounded-xl px-2.5 py-2 transition-all cursor-pointer flex items-center justify-between border ${
@@ -382,7 +414,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  triggerUploadForKB(kb.kb_name);
+                                  onSelectKB(kb.kb_name);
+                                  setUploadModalKB(kb.kb_name);
+                                  setUploadFiles([]);
+                                  setModalFeedback(null);
                                 }}
                                 className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
                                 title={`向 ${kb.kb_name} 上传文档 (.docx/.md/.txt)`}
@@ -418,25 +453,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       );
                     })
                   )}
-                </div>
-              )}
-
-              {/* 上传解析反馈与提示 */}
-              {isUploading && (
-                <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-subtle text-xs text-ink-700 animate-pulse border border-border">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-900 shrink-0" />
-                  <span className="truncate">正在解析并生成双路向量/稀疏索引...</span>
-                </div>
-              )}
-
-              {uploadMessage && (
-                <div className={`mt-2 p-2 rounded-lg text-xs flex items-center justify-between border ${
-                  uploadMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
-                }`}>
-                  <span className="truncate pr-1">{uploadMessage.text}</span>
-                  <button onClick={() => setUploadMessage(null)} className="text-current opacity-60 hover:opacity-100 shrink-0">
-                    <X className="w-3 h-3" />
-                  </button>
                 </div>
               )}
             </div>
@@ -560,7 +576,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </div>
 
-        {/* 侧边隐形极细调节把手 (Delicate Hairline Resizer) */}
+        {/* 侧边隐形极细调节把手 */}
         {onWidthChange && !isCollapsed && (
           <div
             onMouseDown={handleMouseDown}
@@ -578,29 +594,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </aside>
 
-      {/* 隐藏的文件上传 input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept=".docx,.txt,.md"
-        className="hidden"
-        onChange={(e) => {
-          if (e.target.files && e.target.files.length > 0) {
-            handleFileUpload(e.target.files, targetUploadKB || selectedKB);
-          }
-        }}
-      />
-
-      {/* 位于画面居中的新建知识库卡片模态框 */}
+      {/* 1. 居中新建知识库卡片（含内置文档上传区） */}
       {isCreateKBModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
-          onClick={() => setIsCreateKBModalOpen(false)}
+          onClick={() => {
+            if (!isSubmitting) setIsCreateKBModalOpen(false);
+          }}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-paper border border-border rounded-2xl p-6 shadow-2xl space-y-5 animate-scale-in"
+            className="w-full max-w-lg bg-paper border border-border rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-in"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -609,19 +613,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-ink-900">新建私域知识库</h3>
-                  <p className="text-[11px] text-ink-500">创建后可向其中上传文档并构建双路索引</p>
+                  <p className="text-[11px] text-ink-500">创建并导入文档以构建双路向量/稀疏索引</p>
                 </div>
               </div>
               <button
+                disabled={isSubmitting}
                 onClick={() => setIsCreateKBModalOpen(false)}
-                className="p-1.5 rounded-lg text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateKB} className="space-y-4">
-              <div className="space-y-1.5">
+            <form onSubmit={handleCreateKB} className="space-y-3.5">
+              <div className="space-y-1">
                 <label className="block text-xs font-medium text-ink-700">
                   知识库标识 <span className="text-rose-500">*</span>
                 </label>
@@ -629,40 +634,277 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="text"
                   required
                   autoFocus
+                  disabled={isSubmitting}
                   placeholder="例如: tech_manuals 或 project_v1"
                   value={newKBName}
                   onChange={(e) => setNewKBName(e.target.value)}
-                  className="w-full bg-surface border border-border rounded-xl px-3.5 py-2 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400 shadow-xs"
+                  className="w-full bg-surface border border-border rounded-xl px-3.5 py-2 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400 shadow-xs disabled:bg-subtle"
                 />
-                <p className="text-[11px] text-ink-400">建议使用小写英文字母、数字或下划线命名</p>
+                <p className="text-[10px] text-ink-400">建议使用小写英文字母、数字或下划线命名</p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="block text-xs font-medium text-ink-700">
                   描述说明 <span className="text-ink-400 font-normal">(可选)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="例如: 包含企业核心业务规范与研发接口手册"
+                  disabled={isSubmitting}
+                  placeholder="例如: 包含核心业务规范与接口手册"
                   value={newKBDesc}
                   onChange={(e) => setNewKBDesc(e.target.value)}
-                  className="w-full bg-surface border border-border rounded-xl px-3.5 py-2 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400 shadow-xs"
+                  className="w-full bg-surface border border-border rounded-xl px-3.5 py-2 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400 shadow-xs disabled:bg-subtle"
                 />
               </div>
+
+              {/* 内置文档上传区 */}
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-xs font-medium text-ink-700">
+                  导入文档 <span className="text-ink-400 font-normal">(可选，支持批量)</span>
+                </label>
+                
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsCreateDragging(true);
+                  }}
+                  onDragLeave={() => setIsCreateDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsCreateDragging(false);
+                    if (e.dataTransfer.files) {
+                      const valid = filterSupportedFiles(e.dataTransfer.files);
+                      setCreateKBFiles((prev) => [...prev, ...valid]);
+                    }
+                  }}
+                  onClick={() => createFileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-3.5 text-center cursor-pointer transition-all ${
+                    isCreateDragging 
+                      ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20' 
+                      : 'border-border hover:border-stone-400 bg-surface/60'
+                  }`}
+                >
+                  <Upload className="w-4 h-4 mx-auto text-ink-400 mb-1" />
+                  <p className="text-xs text-ink-700 font-medium">点击选择或拖拽文件至此</p>
+                  <p className="text-[10px] text-ink-400 mt-0.5">支持 .docx、.txt、.md 格式</p>
+                </div>
+
+                <input
+                  ref={createFileInputRef}
+                  type="file"
+                  multiple
+                  accept=".docx,.txt,.md"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      const valid = filterSupportedFiles(e.target.files);
+                      setCreateKBFiles((prev) => [...prev, ...valid]);
+                    }
+                  }}
+                />
+
+                {/* 已选文件列表徽章 */}
+                {createKBFiles.length > 0 && (
+                  <div className="space-y-1 max-h-24 overflow-y-auto pr-1 pt-1">
+                    {createKBFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between px-2 py-1 bg-surface border border-border rounded-lg text-xs">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <FileText className="w-3.5 h-3.5 text-ink-400 shrink-0" />
+                          <span className="truncate text-ink-800 text-[11px]">{file.name}</span>
+                          <span className="text-[10px] font-mono text-ink-400">({(file.size / 1024).toFixed(1)} KB)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCreateKBFiles((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          className="text-ink-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 异常反馈提示 */}
+              {modalFeedback && (
+                <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
+                  modalFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                }`}>
+                  {modalFeedback.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
+                  <span>{modalFeedback.text}</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setIsCreateKBModalOpen(false)}
-                  className="px-3.5 py-1.5 text-xs text-ink-600 hover:text-ink-900 hover:bg-subtle rounded-xl transition-colors font-medium cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs text-ink-600 hover:text-ink-900 hover:bg-subtle rounded-xl transition-colors font-medium cursor-pointer disabled:opacity-50"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold bg-ink-900 text-white rounded-xl hover:bg-accent-hover shadow-sm transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-1.5 text-xs font-semibold bg-ink-900 text-white rounded-xl hover:bg-accent-hover shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  确认创建
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>正在构建索引...</span>
+                    </>
+                  ) : (
+                    <span>确认创建</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 居中上传文档卡片（向已有知识库追加导入文档） */}
+      {uploadModalKB && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+          onClick={() => {
+            if (!isSubmitting) setUploadModalKB(null);
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-paper border border-border rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-in"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-surface border border-border flex items-center justify-center text-ink-900 shadow-xs">
+                  <Upload className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-ink-900">上传文档至知识库</h3>
+                    <span className="font-mono text-[10px] text-ink-700 bg-subtle px-1.5 py-0.5 rounded border border-border">
+                      {uploadModalKB}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-500">导入文档将自动切片并生成向量/BM25混合索引</p>
+                </div>
+              </div>
+              <button
+                disabled={isSubmitting}
+                onClick={() => setUploadModalKB(null)}
+                className="p-1.5 rounded-lg text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDedicatedUpload} className="space-y-4">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsUploadDragging(true);
+                }}
+                onDragLeave={() => setIsUploadDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsUploadDragging(false);
+                  if (e.dataTransfer.files) {
+                    const valid = filterSupportedFiles(e.dataTransfer.files);
+                    setUploadFiles((prev) => [...prev, ...valid]);
+                  }
+                }}
+                onClick={() => dedicatedFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                  isUploadDragging 
+                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20' 
+                    : 'border-border hover:border-stone-400 bg-surface/60'
+                }`}
+              >
+                <Upload className="w-6 h-6 mx-auto text-ink-400 mb-1.5" />
+                <p className="text-xs text-ink-700 font-medium">点击选择文档，或将文件拖拽至此区域</p>
+                <p className="text-[11px] text-ink-400 mt-1">支持 Word (.docx)、Markdown (.md) 与纯文本 (.txt)</p>
+              </div>
+
+              <input
+                ref={dedicatedFileInputRef}
+                type="file"
+                multiple
+                accept=".docx,.txt,.md"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    const valid = filterSupportedFiles(e.target.files);
+                    setUploadFiles((prev) => [...prev, ...valid]);
+                  }
+                }}
+              />
+
+              {/* 待上传文件列表 */}
+              {uploadFiles.length > 0 && (
+                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                  <div className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider">
+                    待导入文档清单 ({uploadFiles.length})
+                  </div>
+                  {uploadFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs shadow-xs">
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText className="w-3.5 h-3.5 text-ink-500 shrink-0" />
+                        <span className="truncate text-ink-900 font-medium">{file.name}</span>
+                        <span className="text-[10px] font-mono text-ink-400">({(file.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadFiles((prev) => prev.filter((_, i) => i !== idx));
+                        }}
+                        className="text-ink-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 反馈提示 */}
+              {modalFeedback && (
+                <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
+                  modalFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                }`}>
+                  {modalFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                  <span>{modalFeedback.text}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setUploadModalKB(null)}
+                  className="px-3.5 py-1.5 text-xs text-ink-600 hover:text-ink-900 hover:bg-subtle rounded-xl transition-colors font-medium cursor-pointer disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || uploadFiles.length === 0}
+                  className="px-4 py-1.5 text-xs font-semibold bg-ink-900 text-white rounded-xl hover:bg-accent-hover shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>正在解析与切片...</span>
+                    </>
+                  ) : (
+                    <span>开始导入与切片</span>
+                  )}
                 </button>
               </div>
             </form>

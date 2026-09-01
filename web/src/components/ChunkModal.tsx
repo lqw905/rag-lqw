@@ -61,7 +61,7 @@ export const ChunkModal: React.FC<ChunkModalProps> = ({ isOpen, onClose, kbName 
           <div className="flex items-center gap-3">
             {/* Search filter */}
             <div className="relative w-64 hidden sm:flex items-center">
-              <Search className="w-3.5 h-3.5 text-ink-400 absolute left-3 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="搜索切片内容/标题..."

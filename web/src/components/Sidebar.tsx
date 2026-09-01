@@ -4,8 +4,6 @@ import {
   Upload, 
   Trash2, 
   Layers, 
-  CheckCircle2, 
-  AlertCircle,
   Database,
   Loader2,
   MessageSquare,
@@ -53,14 +51,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   width = 288,
   onWidthChange,
 }) => {
-  // KB Manager Modal State
-  const [isKBModalOpen, setIsKBModalOpen] = useState(false);
+  // Inline KB Create State
   const [isCreatingKB, setIsCreatingKB] = useState(false);
   const [newKBName, setNewKBName] = useState('');
   const [newKBDesc, setNewKBDesc] = useState('');
+
+  // Upload State
   const [isUploading, setIsUploading] = useState(false);
+  const [targetUploadKB, setTargetUploadKB] = useState<string | null>(null);
+  const [dragOverKB, setDragOverKB] = useState<string | null>(null);
   const [uploadMessage, setUploadMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Session Search & Rename State
@@ -71,8 +71,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Drag Resizing State
   const [isResizing, setIsResizing] = useState(false);
   const isResizingRef = useRef(false);
-
-  const currentKB = knowledgeBases.find((k) => k.kb_name === selectedKB);
 
   // Global shortcut: ⌘K or Ctrl+K to create a new session; ⌘B or Ctrl+B to toggle sidebar
   useEffect(() => {
@@ -160,10 +158,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     try {
       await api.createKnowledgeBase(newKBName.trim(), newKBDesc.trim());
       setIsCreatingKB(false);
+      const createdName = newKBName.trim();
       setNewKBName('');
       setNewKBDesc('');
       onRefreshKBs();
-      onSelectKB(newKBName.trim());
+      onSelectKB(createdName);
     } catch (err: any) {
       alert(err.message || '创建知识库失败');
     }
@@ -187,8 +186,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  const handleFileUpload = async (files: FileList | File[]) => {
-    if (!selectedKB) {
+  const triggerUploadForKB = (kb_name: string) => {
+    setTargetUploadKB(kb_name);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = async (files: FileList | File[], targetKB?: string) => {
+    const activeKB = targetKB || targetUploadKB || selectedKB;
+    if (!activeKB) {
       alert('请先选择或创建一个知识库！');
       return;
     }
@@ -206,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setUploadMessage(null);
 
     try {
-      const resList = await api.uploadDocuments(selectedKB, fileArray);
+      const resList = await api.uploadDocuments(activeKB, fileArray);
       const totalChunks = resList.reduce((acc: number, curr: any) => acc + (curr.chunk_count || 0), 0);
       const failed = resList.filter((r: any) => (r.chunk_count || 0) === 0);
 
@@ -217,12 +225,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         });
       } else if (failed.length > 0) {
         setUploadMessage({
-          text: `部分导入成功 (${totalChunks} 切片)，但有 ${failed.length} 个文档未生成切片：${failed.map((f: any) => f.file_name + ' (' + f.message + ')').join('; ')}`,
+          text: `部分成功 (${totalChunks} 切片)，${failed.length} 个未切片：${failed.map((f: any) => f.file_name).join('; ')}`,
           type: 'error',
         });
       } else {
         setUploadMessage({
-          text: `成功导入 ${fileArray.length} 个文档，生成 ${totalChunks} 个有效切片！`,
+          text: `成功向「${activeKB}」导入 ${fileArray.length} 个文档 (${totalChunks} 切片)！`,
           type: 'success',
         });
       }
@@ -231,6 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setUploadMessage({ text: err.message || '上传处理失败', type: 'error' });
     } finally {
       setIsUploading(false);
+      setTargetUploadKB(null);
     }
   };
 
@@ -255,150 +264,294 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
-        {/* 顶部区域：新建对话与知识库卡片 */}
-        <div className="p-4 space-y-4">
-          
-          {/* 挂载知识库卡片 */}
-          <div className="pt-1">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
-              <span>挂载知识库</span>
-              <button 
-                onClick={() => setIsKBModalOpen(true)}
-                className="text-ink-700 hover:text-ink-900 font-semibold transition-colors flex items-center gap-1"
-                title="管理知识库与上传文档"
+          {/* 上半部分：知识库管理与会话搜索区 */}
+          <div className="p-3.5 space-y-3.5 flex-shrink-0 border-b border-border/80">
+            
+            {/* 1. 知识库列表区域 */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-ink-700" />
+                  <span>知识库</span>
+                  <span className="text-[10px] font-mono font-normal text-ink-400">({knowledgeBases.length})</span>
+                </div>
+                <button 
+                  onClick={() => setIsCreatingKB(!isCreatingKB)}
+                  className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer"
+                  title="新建知识库"
+                >
+                  <Plus className={`w-3.5 h-3.5 transition-transform ${isCreatingKB ? 'rotate-45' : ''}`} />
+                  <span className="text-xs">新建</span>
+                </button>
+              </div>
+
+              {/* 行内快速新建知识库表单 */}
+              {isCreatingKB && (
+                <form onSubmit={handleCreateKB} className="p-2.5 rounded-xl bg-surface border border-border space-y-2 mb-2 shadow-card animate-fade-in">
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="知识库标识 (英文/拼音)..."
+                    value={newKBName}
+                    onChange={(e) => setNewKBName(e.target.value)}
+                    className="w-full bg-paper border border-border rounded-lg px-2.5 py-1 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="描述说明 (可选)..."
+                    value={newKBDesc}
+                    onChange={(e) => setNewKBDesc(e.target.value)}
+                    className="w-full bg-paper border border-border rounded-lg px-2.5 py-1 text-[11px] text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400"
+                  />
+                  <div className="flex justify-end gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingKB(false)}
+                      className="px-2 py-0.5 text-[11px] text-ink-500 hover:text-ink-900"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-2.5 py-0.5 text-[11px] font-semibold bg-ink-900 text-white rounded-md hover:bg-accent-hover shadow-xs transition-colors"
+                    >
+                      创建
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* 知识库直列项 */}
+              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
+                {knowledgeBases.length === 0 ? (
+                  <div 
+                    onClick={() => setIsCreatingKB(true)}
+                    className="bg-surface border border-dashed border-border rounded-xl px-3 py-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400 transition-colors"
+                  >
+                    + 点击新建首个知识库
+                  </div>
+                ) : (
+                  knowledgeBases.map((kb) => {
+                    const isSelected = selectedKB === kb.kb_name;
+                    const isDragged = dragOverKB === kb.kb_name;
+                    return (
+                      <div
+                        key={kb.kb_name}
+                        onClick={() => onSelectKB(kb.kb_name)}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragOverKB(kb.kb_name);
+                        }}
+                        onDragLeave={() => setDragOverKB(null)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverKB(null);
+                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            onSelectKB(kb.kb_name);
+                            handleFileUpload(e.dataTransfer.files, kb.kb_name);
+                          }
+                        }}
+                        className={`group/kb rounded-xl px-2.5 py-2 transition-all cursor-pointer flex items-center justify-between border ${
+                          isDragged
+                            ? 'border-emerald-600 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
+                            : isSelected
+                            ? 'bg-surface border-border shadow-card ring-1 ring-ink-900/10'
+                            : 'bg-transparent border-transparent hover:bg-subtle/70 text-ink-700'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2 truncate flex-1 min-w-0 pr-1">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-emerald-600' : 'bg-stone-300'}`} />
+                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
+                            {kb.kb_name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* 默认常驻切片数量，Hover 时切换为快捷操作按钮 */}
+                          <span className="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded border border-border/80 group-hover/kb:hidden">
+                            {kb.chunk_count} 切片
+                          </span>
+
+                          <div className="hidden group-hover/kb:flex items-center gap-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                triggerUploadForKB(kb.kb_name);
+                              }}
+                              className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
+                              title={`向 ${kb.kb_name} 上传文档 (.docx/.md/.txt)`}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                            </button>
+                            {kb.chunk_count > 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectKB(kb.kb_name);
+                                  onOpenChunkModal();
+                                }}
+                                className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
+                                title="切片透视预览"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteKB(kb.kb_name);
+                              }}
+                              className="p-1 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors"
+                              title="删除知识库"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* 上传解析反馈与提示 */}
+              {isUploading && (
+                <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-subtle text-xs text-ink-700 animate-pulse border border-border">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-900 shrink-0" />
+                  <span className="truncate">正在解析并生成双路向量/稀疏索引...</span>
+                </div>
+              )}
+
+              {uploadMessage && (
+                <div className={`mt-2 p-2 rounded-lg text-xs flex items-center justify-between border ${
+                  uploadMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                }`}>
+                  <span className="truncate pr-1">{uploadMessage.text}</span>
+                  <button onClick={() => setUploadMessage(null)} className="text-current opacity-60 hover:opacity-100 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 2. 搜索与新建对话 */}
+            <div className="pt-1 flex items-center gap-2">
+              <div className="relative flex-1 flex items-center">
+                <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={sessionSearch}
+                  onChange={(e) => setSessionSearch(e.target.value)}
+                  placeholder="搜索研读历史..."
+                  className="w-full bg-surface border border-border text-xs text-ink-900 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
+                />
+              </div>
+              <button
+                onClick={onCreateSession}
+                className="flex items-center justify-center bg-surface hover:bg-subtle border border-border rounded-lg p-1.5 shrink-0 shadow-card hover:border-stone-400 transition-all group"
+                title="新建当前库的研读对话"
               >
-                <span>管理</span>
+                <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
               </button>
             </div>
 
-            {currentKB ? (
-              <div className="bg-surface border border-border rounded-xl px-3 py-2 shadow-card transition-all">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 truncate">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 flex-shrink-0"></span>
-                    <span className="text-xs font-semibold text-ink-900 truncate">
-                      {currentKB.kb_name}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-ink-700 bg-subtle px-1.5 py-0.5 rounded border border-border flex-shrink-0">
-                    {currentKB.chunk_count} 切片
-                  </span>
-                </div>
+          </div>
+
+          {/* 中部：选中知识库的历史对话列表 */}
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">
+                近期研读记录
+              </span>
+              {sessions.length > 0 && (
+                <button
+                  onClick={onClearSessions}
+                  className="text-[10px] text-ink-400 hover:text-rose-600 transition-colors"
+                  title="清空当前知识库的所有会话记录"
+                >
+                  清空
+                </button>
+              )}
+            </div>
+
+            {filteredSessions.length === 0 ? (
+              <div className="text-center py-8 text-ink-400 text-xs font-serif italic">
+                {sessionSearch ? '未搜索到相关会话' : '暂无对话，点击上方「+」新建'}
               </div>
             ) : (
-              <div 
-                onClick={() => setIsKBModalOpen(true)}
-                className="bg-surface border border-dashed border-border rounded-xl px-3 py-2 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400"
-              >
-                暂无挂载知识库，点击添加
+              <div className="space-y-1">
+                {todaySessions.length > 0 && (
+                  <div className="space-y-1">
+                    {todaySessions.map((s) => (
+                      <SessionItem
+                        key={s.id}
+                        session={s}
+                        isActive={s.id === activeSessionId}
+                        isEditing={s.id === editingSessionId}
+                        editTitle={editingTitle}
+                        setEditTitle={setEditingTitle}
+                        onSelect={() => onSelectSession(s.id)}
+                        onStartRename={(e) => {
+                          e.stopPropagation();
+                          setEditingSessionId(s.id);
+                          setEditingTitle(s.title);
+                        }}
+                        onSaveRename={() => handleSaveRename(s.id)}
+                        onDelete={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(s.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {earlierSessions.length > 0 && (
+                  <div className="space-y-1 pt-2">
+                    <div className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider px-1">
+                      更早之前
+                    </div>
+                    {earlierSessions.map((s) => (
+                      <SessionItem
+                        key={s.id}
+                        session={s}
+                        isActive={s.id === activeSessionId}
+                        isEditing={s.id === editingSessionId}
+                        editTitle={editingTitle}
+                        setEditTitle={setEditingTitle}
+                        onSelect={() => onSelectSession(s.id)}
+                        onStartRename={(e) => {
+                          e.stopPropagation();
+                          setEditingSessionId(s.id);
+                          setEditingTitle(s.title);
+                        }}
+                        onSaveRename={() => handleSaveRename(s.id)}
+                        onDelete={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(s.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* 搜索与新建对话 */}
-          <div className="pt-1 flex items-center gap-2">
-            <div className="relative flex items-center flex-1">
-              <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2.5 pointer-events-none" />
-              <input
-                type="text"
-                value={sessionSearch}
-                onChange={(e) => setSessionSearch(e.target.value)}
-                placeholder="搜索研读历史..."
-                className="w-full bg-surface border border-border text-xs text-ink-900 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
-              />
-            </div>
-            <button
-              onClick={onCreateSession}
-              className="flex items-center justify-center bg-surface hover:bg-subtle border border-border rounded-lg p-1.5 shrink-0 shadow-card hover:border-stone-400 transition-all group"
-              title="新建研读对话"
-            >
-              <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
-            </button>
-          </div>
-
-        </div>
-
-        {/* 中部：历史对话列表 */}
-        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-3 min-h-0">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">
-              近期研读记录
-            </span>
-            {sessions.length > 0 && (
-              <button
-                onClick={onClearSessions}
-                className="text-[10px] text-ink-400 hover:text-rose-600 transition-colors"
-                title="清空当前知识库的所有会话记录"
-              >
-                清空
-              </button>
-            )}
-          </div>
-
-          {filteredSessions.length === 0 ? (
-            <div className="text-center py-6 text-ink-400 text-xs font-serif italic">
-              {sessionSearch ? '未搜索到相关会话' : '暂无对话，点击上方新建'}
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {todaySessions.map((s) => (
-                <SessionItem
-                  key={s.id}
-                  session={s}
-                  isActive={s.id === activeSessionId}
-                  isEditing={s.id === editingSessionId}
-                  editTitle={editingTitle}
-                  setEditTitle={setEditingTitle}
-                  onSelect={() => onSelectSession(s.id)}
-                  onStartRename={(e) => {
-                    e.stopPropagation();
-                    setEditingSessionId(s.id);
-                    setEditingTitle(s.title);
-                  }}
-                  onSaveRename={() => handleSaveRename(s.id)}
-                  onDelete={(e) => {
-                    e.stopPropagation();
-                    onDeleteSession(s.id);
-                  }}
-                />
-              ))}
-
-              {earlierSessions.map((s) => (
-                <SessionItem
-                  key={s.id}
-                  session={s}
-                  isActive={s.id === activeSessionId}
-                  isEditing={s.id === editingSessionId}
-                  editTitle={editingTitle}
-                  setEditTitle={setEditingTitle}
-                  onSelect={() => onSelectSession(s.id)}
-                  onStartRename={(e) => {
-                    e.stopPropagation();
-                    setEditingSessionId(s.id);
-                    setEditingTitle(s.title);
-                  }}
-                  onSaveRename={() => handleSaveRename(s.id)}
-                  onDelete={(e) => {
-                    e.stopPropagation();
-                    onDeleteSession(s.id);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 底部：用户信息与状态栏 */}
-        <div className="p-3 border-t border-border bg-paper/60 space-y-2">
-          <div className="flex items-center justify-between text-xs px-1">
+          {/* 底部：用户信息与状态栏 */}
+          <div className="p-3 border-t border-border bg-paper flex items-center justify-between text-xs text-ink-500 flex-shrink-0">
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 rounded-full bg-stone-300 flex items-center justify-center text-[10px] font-bold text-ink-700">
                 LQ
               </div>
               <span className="text-xs font-semibold text-ink-900">工程研究员</span>
             </div>
+            <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              MCP READY
+            </span>
           </div>
-        </div>
+
         </div>
 
         {/* 侧边隐形极细调节把手 (Delicate Hairline Resizer) */}
@@ -419,247 +572,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </aside>
 
-      {/* ========================================================================= */}
-      {/* 知识库管理与文档上传全功能模态框 (KB & Document Manager Modal) */}
-      {/* ========================================================================= */}
-      {isKBModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface border border-border rounded-2xl w-full max-w-2xl shadow-popover overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-paper/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-ink-900 text-white flex items-center justify-center shadow-sm">
-                  <Database className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm text-ink-900">知识库与文档管理中心</h3>
-                  <p className="text-[11px] text-ink-500 font-mono">切换目标知识库、上传切片文档或预览索引状态</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsKBModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-subtle text-ink-400 hover:text-ink-900 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              
-              {/* 1. 知识库选择与新建 */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-ink-700 uppercase tracking-wider">
-                    知识库列表 ({knowledgeBases.length})
-                  </label>
-                  <button
-                    onClick={() => setIsCreatingKB(!isCreatingKB)}
-                    className="text-xs font-semibold text-ink-900 hover:text-accent-hover flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>新建知识库</span>
-                  </button>
-                </div>
-
-                {isCreatingKB && (
-                  <form onSubmit={handleCreateKB} className="p-4 rounded-xl bg-paper border border-border space-y-3 animate-fade-in">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-ink-700 mb-1">
-                          知识库标识 (英文/拼音) <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="例如: tech_manuals"
-                          value={newKBName}
-                          onChange={(e) => setNewKBName(e.target.value)}
-                          className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-xs text-ink-900 focus:outline-none focus:border-stone-400"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-ink-700 mb-1">描述（可选）</label>
-                        <input
-                          type="text"
-                          placeholder="例如: 核心系统规程"
-                          value={newKBDesc}
-                          onChange={(e) => setNewKBDesc(e.target.value)}
-                          className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-xs text-ink-900 focus:outline-none focus:border-stone-400"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsCreatingKB(false)}
-                        className="px-3 py-1 text-xs text-ink-500 hover:text-ink-900"
-                      >
-                        取消
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-3.5 py-1 text-xs font-semibold bg-ink-900 text-white rounded-lg hover:bg-accent-hover shadow-sm"
-                      >
-                        确认创建
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {knowledgeBases.map((kb) => (
-                    <div
-                      key={kb.kb_name}
-                      onClick={() => onSelectKB(kb.kb_name)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                        selectedKB === kb.kb_name
-                          ? 'border-ink-900 bg-paper shadow-card ring-1 ring-ink-900'
-                          : 'border-border bg-surface hover:border-stone-400 shadow-card'
-                      }`}
-                    >
-                      <div className="truncate pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${selectedKB === kb.kb_name ? 'bg-emerald-600' : 'bg-stone-300'}`} />
-                          <span className="font-semibold text-xs text-ink-900 truncate">{kb.kb_name}</span>
-                        </div>
-                        <p className="text-[11px] text-ink-500 font-mono mt-0.5">{kb.chunk_count} 个切片</p>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        {selectedKB === kb.kb_name && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsKBModalOpen(false);
-                              onOpenChunkModal();
-                            }}
-                            className="p-1.5 rounded-lg bg-subtle hover:bg-stone-200 text-ink-700 text-xs flex items-center gap-1 transition-colors"
-                            title="切片预览"
-                          >
-                            <Layers className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteKB(kb.kb_name);
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-rose-50 text-ink-400 hover:text-rose-600 transition-colors"
-                          title="删除知识库"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2. 当前选中知识库的文档上传 */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-ink-700 uppercase tracking-wider">
-                    向「<strong className="text-ink-900 font-mono">{selectedKB || '未选择'}</strong>」上传并切片文档
-                  </h4>
-                  {currentKB && currentKB.chunk_count > 0 && (
-                    <button
-                      onClick={() => {
-                        setIsKBModalOpen(false);
-                        onOpenChunkModal();
-                      }}
-                      className="text-xs font-semibold text-ink-900 hover:underline flex items-center gap-1"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>查看当前切片明细</span>
-                    </button>
-                  )}
-                </div>
-
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragging(false);
-                    if (e.dataTransfer.files) {
-                      handleFileUpload(e.dataTransfer.files);
-                    }
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
-                    isDragging
-                      ? 'border-ink-900 bg-subtle'
-                      : 'border-border hover:border-stone-400 bg-paper/60 hover:bg-paper shadow-card'
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept=".docx,.txt,.md"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        handleFileUpload(e.target.files);
-                      }
-                    }}
-                  />
-                  {isUploading ? (
-                    <div className="flex flex-col items-center gap-2 py-3">
-                      <Loader2 className="w-6 h-6 text-ink-900 animate-spin" />
-                      <p className="text-xs text-ink-900 font-semibold">正在解析 Word/Markdown 结构并生成向量...</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-ink-700 shadow-card border border-border">
-                        <Upload className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-ink-900">点击或拖拽文件到此处完成切片入库</p>
-                        <p className="text-[11px] text-ink-400 mt-0.5 font-mono">支持 Word (.docx), Markdown (.md), 文本 (.txt)</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {uploadMessage && (
-                  <div
-                    className={`p-3 rounded-xl text-xs flex items-start gap-2 animate-fade-in ${
-                      uploadMessage.type === 'success'
-                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                        : 'bg-rose-50 border border-rose-200 text-rose-800'
-                    }`}
-                  >
-                    {uploadMessage.type === 'success' ? (
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
-                    )}
-                    <span className="leading-relaxed">{uploadMessage.text}</span>
-                  </div>
-                )}
-              </div>
-
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-border bg-paper/50 flex items-center justify-between text-xs text-ink-500">
-              <span className="font-mono text-[11px]">BGE-M3 + BGE-Reranker-v2</span>
-              <button
-                onClick={() => setIsKBModalOpen(false)}
-                className="px-4 py-1.5 rounded-xl font-semibold bg-ink-900 text-white hover:bg-accent-hover shadow-sm transition-all"
-              >
-                完成
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 隐藏的文件上传 input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".docx,.txt,.md"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleFileUpload(e.target.files, targetUploadKB || selectedKB);
+          }
+        }}
+      />
     </>
   );
 };

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>风格三：Stripe / Vercel Tech Indigo (现代技术 SaaS 风)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            canvas: '#F8FAFC',
+            sidebar: '#F1F5F9',
+            card: '#FFFFFF',
+            border: '#E2E8F0',
+            primary: '#4F46E5', // Indigo 600
+            primaryHover: '#4338CA',
+            txt: {
+              main: '#0F172A',
+              sub: '#475569',
+              muted: '#94A3B8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #F8FAFC;
+      color: #0F172A;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .tech-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.03), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+    }
+    .footnote-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: #4F46E5;
+      background: #EEF2FF;
+      border: 1px solid #C7D2FE;
+      border-radius: 4px;
+      padding: 0 5px;
+      height: 18px;
+      margin: 0 3px;
+      cursor: pointer;
+      vertical-align: 1px;
+      transition: all 0.15s ease;
+    }
+    .footnote-badge:hover {
+      background: #4F46E5;
+      color: #FFFFFF;
+      border-color: #4F46E5;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col overflow-hidden select-none bg-canvas">
+
+  <!-- 1. Header (46px SaaS Studio 高度) -->
+  <header class="h-12 bg-card border-b border-border flex items-center justify-between px-5 z-30 shrink-0 shadow-xs">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-6 h-6 rounded-lg bg-primary flex items-center justify-center font-mono font-bold text-xs text-white shadow-sm shadow-indigo-200">
+          R
+        </div>
+        <span class="font-bold text-sm text-txt-main tracking-tight">RAG-GK</span>
+        <span class="text-[10px] font-mono font-semibold text-primary bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">Studio SaaS</span>
+      </div>
+
+      <div class="h-4 w-px bg-border mx-1"></div>
+
+      <!-- Pill Nav Switcher -->
+      <div class="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200">
+        <button class="px-3 py-1 rounded-lg text-xs font-semibold bg-white text-txt-main shadow-xs">知识库问答</button>
+        <button class="px-3 py-1 rounded-lg text-xs font-medium text-txt-sub hover:text-txt-main transition-colors">检索对比实验室</button>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-mono text-emerald-700">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>DeepSeek-V3 · Active</span>
+      </div>
+      <button class="text-txt-sub hover:text-txt-main p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- 2. Left Sidebar (260px) -->
+    <aside class="w-64 bg-sidebar border-r border-border flex flex-col justify-between shrink-0 relative">
+      <div class="p-3.5 space-y-4">
+        
+        <!-- Mounted KB Card -->
+        <div>
+          <div class="flex items-center justify-between text-[11px] font-semibold text-txt-sub uppercase tracking-wider mb-2">
+            <span>挂载知识库</span>
+            <button class="text-primary hover:text-primaryHover text-xs font-semibold flex items-center gap-0.5">管理</button>
+          </div>
+          <div class="tech-card rounded-xl p-3 flex items-center justify-between border-slate-200">
+            <div class="flex items-center gap-2 truncate">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-300"></span>
+              <span class="text-xs font-semibold text-txt-main truncate">core_enterprise_docs</span>
+            </div>
+            <span class="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+              142 块
+            </span>
+          </div>
+        </div>
+
+        <!-- Search & New Chat -->
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <input type="text" placeholder="搜索会话 (⌘K)..." class="w-full bg-white border border-border rounded-lg pl-3 pr-2 py-1.5 text-xs text-txt-main placeholder:text-txt-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-indigo-100 transition-all shadow-xs" />
+          </div>
+          <button class="p-2 bg-primary hover:bg-primaryHover text-white rounded-lg transition-colors shadow-sm shadow-indigo-200">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </button>
+        </div>
+
+        <!-- Sessions -->
+        <div class="space-y-1.5 pt-1">
+          <div class="text-[10px] font-bold text-txt-muted uppercase tracking-wider px-1 mb-1">今日研读</div>
+          
+          <!-- Active Session -->
+          <div class="px-3 py-2.5 rounded-xl bg-white border border-indigo-200 text-xs font-semibold text-primary flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2 truncate">
+              <svg class="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+              <span class="truncate">分布式架构与多路检索算法</span>
+            </div>
+            <span class="text-[10px] font-mono text-indigo-400 shrink-0">19:42</span>
+          </div>
+
+          <!-- Inactive Session -->
+          <div class="px-3 py-2.5 rounded-xl hover:bg-white/80 text-xs text-txt-sub hover:text-txt-main flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-border">
+            <div class="flex items-center gap-2 truncate">
+              <svg class="w-4 h-4 text-txt-muted shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+              <span class="truncate">NumPy 矩阵点积加速方案</span>
+            </div>
+            <span class="text-[10px] font-mono text-txt-muted shrink-0">16:10</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Profile -->
+      <div class="p-3.5 border-t border-border flex items-center justify-between text-xs text-txt-sub bg-card">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-lg bg-indigo-100 text-primary flex items-center justify-center font-mono text-[10px] font-bold">LQ</div>
+          <span class="text-txt-main font-semibold">企业算法专家</span>
+        </div>
+        <span class="font-mono text-[10px] text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">MCP READY</span>
+      </div>
+
+      <!-- Hairline Resizer -->
+      <div class="absolute -right-[2px] top-0 bottom-0 w-[4px] cursor-col-resize hover:bg-primary/40 transition-colors"></div>
+    </aside>
+
+    <!-- 3. Middle Chat Area -->
+    <main class="flex-1 flex flex-col bg-canvas overflow-hidden relative">
+      
+      <!-- Sub-header -->
+      <div class="h-11 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xs font-bold text-txt-main">分布式架构与多路检索算法</span>
+          <span class="text-[10px] font-mono font-semibold text-txt-sub px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">2 轮对话</span>
+        </div>
+        <button class="text-xs text-txt-sub hover:text-txt-main flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg hover:bg-slate-100 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span>导出 Markdown</span>
+        </button>
+      </div>
+
+      <!-- Message History Container -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl w-full mx-auto">
+        
+        <!-- User Bubble -->
+        <div class="flex justify-end">
+          <div class="bg-primary text-white text-xs px-4 py-3 rounded-2xl max-w-xl leading-relaxed shadow-sm shadow-indigo-200 font-medium">
+            请详细解析 RAG-GK 系统的混合多路召回与重排机制，以及它是如何消除知识库切片上下文断裂的？
+          </div>
+        </div>
+
+        <!-- Assistant Bubble (Tech Card with Accent Header) -->
+        <div class="tech-card rounded-2xl p-6 space-y-4">
+          
+          <!-- Fact Header -->
+          <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 text-xs">
+            <div class="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="font-semibold text-[11px]">已依据私域文档精准检索确认</span>
+            </div>
+            <button class="text-xs font-bold text-primary hover:text-primaryHover flex items-center gap-1">
+              <span>查看 3 处引用溯源</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+
+          <!-- Markdown Content -->
+          <div class="text-xs text-txt-main leading-relaxed space-y-3.5 font-sans">
+            <p>
+              RAG-GK 系统采用 <strong>Dense 密集向量 + Sparse BM25Plus 稀疏关键词</strong> 的双路异构检索架构<span class="footnote-badge">1</span>。
+            </p>
+            
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1.5">
+              <div class="font-mono text-[11px] text-primary font-bold">1. 标题面包屑动态切片 (Breadcrumb Splitter)</div>
+              <p class="text-txt-sub leading-relaxed">
+                切片器自动跟踪 Markdown 标题层级栈，在生成每个分块时自动在头部注入 <code class="bg-white px-1.5 py-0.5 border border-slate-200 rounded text-txt-main font-mono">[上下文: 核心架构 > 检索管道]</code> 面包屑前缀<span class="footnote-badge">2</span>，彻底避免孤立切片失去父级语义。
+              </p>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1.5">
+              <div class="font-mono text-[11px] text-emerald-600 font-bold">2. RRF 倒数排名融合 + Cross-Encoder 语义精排</div>
+              <p class="text-txt-sub leading-relaxed">
+                两路召回结果先通过公式 $RRF(d) = \sum \frac{1}{60 + r_i}$ 归一化双路打分，再由在线 BGE-Reranker 进行全交叉注意力交叉打分<span class="footnote-badge">3</span>，置信度及格线过滤噪音后交付生成。
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Floating Dock -->
+      <div class="p-5 bg-gradient-to-t from-canvas via-canvas to-transparent shrink-0">
+        <div class="max-w-3xl mx-auto tech-card rounded-2xl p-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-indigo-100 transition-all shadow-md">
+          <textarea rows="2" placeholder="向知识库提出深度问题，或输入指令（支持多文档关联推理）..." class="w-full bg-transparent text-xs text-txt-main placeholder:text-txt-muted focus:outline-none resize-none px-2 leading-relaxed font-sans"></textarea>
+          <div class="flex items-center justify-between pt-2 px-1 border-t border-slate-100">
+            <div class="flex items-center gap-2 text-[11px] font-mono text-txt-muted">
+              <span>Top-K: 5</span>
+              <span>·</span>
+              <span>Reranker: Active</span>
+            </div>
+            <button class="px-4 py-2 bg-primary hover:bg-primaryHover text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-indigo-200">
+              <span>提问</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- 4. Right Sliding Drawer (320px) -->
+    <aside class="w-80 bg-card border-l border-border flex flex-col justify-between shrink-0 shadow-xs">
+      <div class="p-4 border-b border-border flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-primary"></span>
+          <span class="text-xs font-bold text-txt-main">参考切片溯源 (3)</span>
+        </div>
+        <button class="text-txt-muted hover:text-txt-main p-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+        <!-- Chunk Item 1 -->
+        <div class="bg-slate-50 border border-indigo-200 rounded-xl p-3.5 space-y-2 border-l-4 border-l-primary shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-bold text-primary bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">[1] 置信度 0.942</span>
+            <span class="text-[10px] text-txt-muted font-mono">238 Tokens</span>
+          </div>
+          <div class="text-[11px] font-bold text-txt-main">架构手册.docx > 检索管道</div>
+          <div class="text-[11px] text-txt-sub leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200 font-mono text-[10.5px]">
+            [上下文: 系统架构 > 检索管道]<br/>
+            混合检索器并行调用 Dense 向量点积与 BM25Plus 词频匹配...
+          </div>
+        </div>
+
+        <!-- Chunk Item 2 -->
+        <div class="bg-slate-50 border border-border rounded-xl p-3.5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-semibold text-txt-sub bg-white px-2 py-0.5 rounded border border-border">[2] 置信度 0.887</span>
+            <span class="text-[10px] text-txt-muted font-mono">180 Tokens</span>
+          </div>
+          <div class="text-[11px] font-bold text-txt-main">切片规范.md > 面包屑前缀</div>
+          <div class="text-[11px] text-txt-sub leading-relaxed bg-white p-2.5 rounded-lg border border-border font-mono text-[10.5px]">
+            [上下文: 切片规范 > 标题维护]<br/>
+            MarkdownHeaderSplitter 动态维护标题栈，消除孤岛效应...
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 border-t border-border text-center text-[10px] font-mono text-txt-muted bg-slate-50">
+        BGE-Reranker-v2-m3 · Cross Attention
+      </div>
+    </aside>
+
+  </div>
+
+</body>
+</html>

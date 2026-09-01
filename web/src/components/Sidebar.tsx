@@ -203,25 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return sessions.filter((s) => s.title.toLowerCase().includes(q));
   }, [sessions, searchModalQuery]);
 
-  // Group sessions by Today vs Earlier for Sidebar list
-  const { todaySessions, earlierSessions } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTimestamp = today.getTime();
 
-    const todayList: ChatSession[] = [];
-    const earlierList: ChatSession[] = [];
-
-    sessions.forEach((s) => {
-      if (s.updated_at >= todayTimestamp) {
-        todayList.push(s);
-      } else {
-        earlierList.push(s);
-      }
-    });
-
-    return { todaySessions: todayList, earlierSessions: earlierList };
-  }, [sessions]);
 
   // Filter supported files helper
   const filterSupportedFiles = (files: FileList | File[]) => {
@@ -552,61 +534,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 暂无对话，点击上方「发起新对话」
               </div>
             ) : (
-              <div className="space-y-1">
-                {todaySessions.length > 0 && (
-                  <div className="space-y-1">
-                    {todaySessions.map((s) => (
-                      <SessionItem
-                        key={s.id}
-                        session={s}
-                        isActive={s.id === activeSessionId}
-                        isEditing={s.id === editingSessionId}
-                        editTitle={editingTitle}
-                        setEditTitle={setEditingTitle}
-                        onSelect={() => onSelectSession(s.id)}
-                        onStartRename={(e) => {
-                          e.stopPropagation();
-                          setEditingSessionId(s.id);
-                          setEditingTitle(s.title);
-                        }}
-                        onSaveRename={() => handleSaveRename(s.id)}
-                        onDelete={(e) => {
-                          e.stopPropagation();
-                          onDeleteSession(s.id);
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {earlierSessions.length > 0 && (
-                  <div className="space-y-1 pt-2">
-                    <div className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider px-1">
-                      更早之前
-                    </div>
-                    {earlierSessions.map((s) => (
-                      <SessionItem
-                        key={s.id}
-                        session={s}
-                        isActive={s.id === activeSessionId}
-                        isEditing={s.id === editingSessionId}
-                        editTitle={editingTitle}
-                        setEditTitle={setEditingTitle}
-                        onSelect={() => onSelectSession(s.id)}
-                        onStartRename={(e) => {
-                          e.stopPropagation();
-                          setEditingSessionId(s.id);
-                          setEditingTitle(s.title);
-                        }}
-                        onSaveRename={() => handleSaveRename(s.id)}
-                        onDelete={(e) => {
-                          e.stopPropagation();
-                          onDeleteSession(s.id);
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
+              <div className="space-y-0.5">
+                {sessions.map((s) => (
+                  <SessionItem
+                    key={s.id}
+                    session={s}
+                    isActive={s.id === activeSessionId}
+                    isEditing={s.id === editingSessionId}
+                    editTitle={editingTitle}
+                    setEditTitle={setEditingTitle}
+                    onSelect={() => onSelectSession(s.id)}
+                    onStartRename={(e) => {
+                      e.stopPropagation();
+                      setEditingSessionId(s.id);
+                      setEditingTitle(s.title);
+                    }}
+                    onSaveRename={() => handleSaveRename(s.id)}
+                    onDelete={(e) => {
+                      e.stopPropagation();
+                      onDeleteSession(s.id);
+                    }}
+                  />
+                ))}
               </div>
             )}
           </div>

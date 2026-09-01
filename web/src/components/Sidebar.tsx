@@ -52,8 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   width = 288,
   onWidthChange,
 }) => {
-  // Inline KB Create State
-  const [isCreatingKB, setIsCreatingKB] = useState(false);
+  // Create KB Modal State
+  const [isCreateKBModalOpen, setIsCreateKBModalOpen] = useState(false);
   const [newKBName, setNewKBName] = useState('');
   const [newKBDesc, setNewKBDesc] = useState('');
 
@@ -95,9 +95,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const isResizingRef = useRef(false);
 
-  // Global shortcut: ⌘K or Ctrl+K to create a new session; ⌘B or Ctrl+B to toggle sidebar
+  // Global shortcut: ⌘K or Ctrl+K to create a new session; ⌘B or Ctrl+B to toggle sidebar; Escape to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isCreateKBModalOpen) {
+        setIsCreateKBModalOpen(false);
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         onCreateSession();
@@ -109,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCreateSession, onToggleCollapse]);
+  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen]);
 
   // Handle Drag Resizing
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -180,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     try {
       await api.createKnowledgeBase(newKBName.trim(), newKBDesc.trim());
-      setIsCreatingKB(false);
+      setIsCreateKBModalOpen(false);
       const createdName = newKBName.trim();
       setNewKBName('');
       setNewKBDesc('');
@@ -314,61 +317,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </button>
                 <button 
-                  onClick={() => {
-                    if (isKBListCollapsed) setIsKBListCollapsed(false);
-                    setIsCreatingKB(!isCreatingKB);
-                  }}
+                  onClick={() => setIsCreateKBModalOpen(true)}
                   className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer shrink-0"
                   title="新建知识库"
                 >
-                  <Plus className={`w-3.5 h-3.5 transition-transform ${isCreatingKB ? 'rotate-45' : ''}`} />
+                  <Plus className="w-3.5 h-3.5" />
                   <span className="text-xs">新建</span>
                 </button>
               </div>
-
-              {/* 行内快速新建知识库表单 */}
-              {isCreatingKB && (
-                <form onSubmit={handleCreateKB} className="p-2.5 rounded-xl bg-surface border border-border space-y-2 mb-2 shadow-card animate-fade-in">
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    placeholder="知识库标识 (英文/拼音)..."
-                    value={newKBName}
-                    onChange={(e) => setNewKBName(e.target.value)}
-                    className="w-full bg-paper border border-border rounded-lg px-2.5 py-1 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400"
-                  />
-                  <input
-                    type="text"
-                    placeholder="描述说明 (可选)..."
-                    value={newKBDesc}
-                    onChange={(e) => setNewKBDesc(e.target.value)}
-                    className="w-full bg-paper border border-border rounded-lg px-2.5 py-1 text-[11px] text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400"
-                  />
-                  <div className="flex justify-end gap-1.5 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingKB(false)}
-                      className="px-2 py-0.5 text-[11px] text-ink-500 hover:text-ink-900"
-                    >
-                      取消
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-2.5 py-0.5 text-[11px] font-semibold bg-ink-900 text-white rounded-md hover:bg-accent-hover shadow-xs transition-colors"
-                    >
-                      创建
-                    </button>
-                  </div>
-                </form>
-              )}
 
               {/* 仅在展开态展示全部知识库直列项 */}
               {!isKBListCollapsed && (
                 <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5 animate-fade-in">
                   {knowledgeBases.length === 0 ? (
                     <div 
-                      onClick={() => setIsCreatingKB(true)}
+                      onClick={() => setIsCreateKBModalOpen(true)}
                       className="bg-surface border border-dashed border-border rounded-xl px-3 py-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400 transition-colors"
                     >
                       + 点击新建首个知识库
@@ -628,6 +591,84 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }
         }}
       />
+
+      {/* 位于画面居中的新建知识库卡片模态框 */}
+      {isCreateKBModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+          onClick={() => setIsCreateKBModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-paper border border-border rounded-2xl p-6 shadow-2xl space-y-5 animate-scale-in"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-surface border border-border flex items-center justify-center text-ink-900 shadow-xs">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-ink-900">新建私域知识库</h3>
+                  <p className="text-[11px] text-ink-500">创建后可向其中上传文档并构建双路索引</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateKBModalOpen(false)}
+                className="p-1.5 rounded-lg text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateKB} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-ink-700">
+                  知识库标识 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="例如: tech_manuals 或 project_v1"
+                  value={newKBName}
+                  onChange={(e) => setNewKBName(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-xl px-3.5 py-2 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400 shadow-xs"
+                />
+                <p className="text-[11px] text-ink-400">建议使用小写英文字母、数字或下划线命名</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-ink-700">
+                  描述说明 <span className="text-ink-400 font-normal">(可选)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="例如: 包含企业核心业务规范与研发接口手册"
+                  value={newKBDesc}
+                  onChange={(e) => setNewKBDesc(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-xl px-3.5 py-2 text-xs text-ink-900 focus:outline-none focus:border-stone-500 placeholder:text-ink-400 shadow-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateKBModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-ink-600 hover:text-ink-900 hover:bg-subtle rounded-xl transition-colors font-medium cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 text-xs font-semibold bg-ink-900 text-white rounded-xl hover:bg-accent-hover shadow-sm transition-colors cursor-pointer"
+                >
+                  确认创建
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

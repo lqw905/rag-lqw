@@ -9,7 +9,9 @@ import {
   MessageSquare,
   Edit3,
   Search,
-  X
+  X,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -55,6 +57,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isCreatingKB, setIsCreatingKB] = useState(false);
   const [newKBName, setNewKBName] = useState('');
   const [newKBDesc, setNewKBDesc] = useState('');
+
+  // KB List Collapsible State
+  const [isKBListCollapsed, setIsKBListCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('rag_kblist_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleKBList = () => {
+    setIsKBListCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('rag_kblist_collapsed', String(next));
+      } catch (err) {
+        console.error(err);
+      }
+      return next;
+    });
+  };
 
   // Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -270,13 +293,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* 1. 知识库列表区域 */}
             <div>
               <div className="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
-                <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleToggleKBList}
+                  className="flex items-center gap-1.5 hover:text-ink-900 transition-colors cursor-pointer group text-left"
+                  title={isKBListCollapsed ? '点击展开完整知识库列表' : '点击收起知识库列表'}
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 text-ink-400 group-hover:text-ink-900 transition-transform duration-200 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
                   <Database className="w-3.5 h-3.5 text-ink-700" />
-                  <span>知识库</span>
+                  <span className="font-semibold text-ink-700">知识库</span>
                   <span className="text-[10px] font-mono font-normal text-ink-400">({knowledgeBases.length})</span>
-                </div>
+                </button>
                 <button 
-                  onClick={() => setIsCreatingKB(!isCreatingKB)}
+                  onClick={() => {
+                    if (isKBListCollapsed) setIsKBListCollapsed(false);
+                    setIsCreatingKB(!isCreatingKB);
+                  }}
                   className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer"
                   title="新建知识库"
                 >
@@ -322,98 +354,125 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </form>
               )}
 
-              {/* 知识库直列项 */}
-              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
-                {knowledgeBases.length === 0 ? (
-                  <div 
-                    onClick={() => setIsCreatingKB(true)}
-                    className="bg-surface border border-dashed border-border rounded-xl px-3 py-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400 transition-colors"
-                  >
-                    + 点击新建首个知识库
+              {/* 折叠收起态：展示当前使用的知识库摘要卡片 */}
+              {isKBListCollapsed ? (
+                <div
+                  onClick={() => setIsKBListCollapsed(false)}
+                  className="bg-surface border border-border rounded-xl px-2.5 py-2 shadow-card flex items-center justify-between cursor-pointer hover:border-stone-400 transition-all group animate-fade-in"
+                  title="点击展开完整知识库列表"
+                >
+                  <div className="flex items-center space-x-2 truncate flex-1 min-w-0 pr-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 flex-shrink-0 animate-pulse-subtle" />
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="text-[10px] text-ink-400 font-mono">当前:</span>
+                      <span className="text-xs font-semibold text-ink-900 truncate">
+                        {selectedKB || '未选择知识库'}
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  knowledgeBases.map((kb) => {
-                    const isSelected = selectedKB === kb.kb_name;
-                    const isDragged = dragOverKB === kb.kb_name;
-                    return (
-                      <div
-                        key={kb.kb_name}
-                        onClick={() => onSelectKB(kb.kb_name)}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setDragOverKB(kb.kb_name);
-                        }}
-                        onDragLeave={() => setDragOverKB(null)}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setDragOverKB(null);
-                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                            onSelectKB(kb.kb_name);
-                            handleFileUpload(e.dataTransfer.files, kb.kb_name);
-                          }
-                        }}
-                        className={`group/kb rounded-xl px-2.5 py-2 transition-all cursor-pointer flex items-center justify-between border ${
-                          isDragged
-                            ? 'border-emerald-600 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
-                            : isSelected
-                            ? 'bg-surface border-border shadow-card ring-1 ring-ink-900/10'
-                            : 'bg-transparent border-transparent hover:bg-subtle/70 text-ink-700'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2 truncate flex-1 min-w-0 pr-1">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-emerald-600' : 'bg-stone-300'}`} />
-                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
-                            {kb.kb_name}
-                          </span>
-                        </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {knowledgeBases.find((k) => k.kb_name === selectedKB) && (
+                      <span className="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded border border-border/80">
+                        {knowledgeBases.find((k) => k.kb_name === selectedKB)?.chunk_count} 切片
+                      </span>
+                    )}
+                    <ChevronRight className="w-3.5 h-3.5 text-ink-400 group-hover:text-ink-700 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </div>
+              ) : (
+                /* 展开态：展示全部知识库直列项 */
+                <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5 animate-fade-in">
+                  {knowledgeBases.length === 0 ? (
+                    <div 
+                      onClick={() => setIsCreatingKB(true)}
+                      className="bg-surface border border-dashed border-border rounded-xl px-3 py-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400 transition-colors"
+                    >
+                      + 点击新建首个知识库
+                    </div>
+                  ) : (
+                    knowledgeBases.map((kb) => {
+                      const isSelected = selectedKB === kb.kb_name;
+                      const isDragged = dragOverKB === kb.kb_name;
+                      return (
+                        <div
+                          key={kb.kb_name}
+                          onClick={() => onSelectKB(kb.kb_name)}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOverKB(kb.kb_name);
+                          }}
+                          onDragLeave={() => setDragOverKB(null)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverKB(null);
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                              onSelectKB(kb.kb_name);
+                              handleFileUpload(e.dataTransfer.files, kb.kb_name);
+                            }
+                          }}
+                          className={`group/kb rounded-xl px-2.5 py-2 transition-all cursor-pointer flex items-center justify-between border ${
+                            isDragged
+                              ? 'border-emerald-600 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
+                              : isSelected
+                              ? 'bg-surface border-border shadow-card ring-1 ring-ink-900/10'
+                              : 'bg-transparent border-transparent hover:bg-subtle/70 text-ink-700'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 truncate flex-1 min-w-0 pr-1">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-emerald-600' : 'bg-stone-300'}`} />
+                            <span className={`text-xs truncate ${isSelected ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
+                              {kb.kb_name}
+                            </span>
+                          </div>
 
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {/* 默认常驻切片数量，Hover 时切换为快捷操作按钮 */}
-                          <span className="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded border border-border/80 group-hover/kb:hidden">
-                            {kb.chunk_count} 切片
-                          </span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {/* 默认常驻切片数量，Hover 时切换为快捷操作按钮 */}
+                            <span className="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded border border-border/80 group-hover/kb:hidden">
+                              {kb.chunk_count} 切片
+                            </span>
 
-                          <div className="hidden group-hover/kb:flex items-center gap-0.5">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                triggerUploadForKB(kb.kb_name);
-                              }}
-                              className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
-                              title={`向 ${kb.kb_name} 上传文档 (.docx/.md/.txt)`}
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                            </button>
-                            {kb.chunk_count > 0 && (
+                            <div className="hidden group-hover/kb:flex items-center gap-0.5">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onSelectKB(kb.kb_name);
-                                  onOpenChunkModal();
+                                  triggerUploadForKB(kb.kb_name);
                                 }}
                                 className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
-                                title="切片透视预览"
+                                title={`向 ${kb.kb_name} 上传文档 (.docx/.md/.txt)`}
                               >
-                                <Layers className="w-3.5 h-3.5" />
+                                <Upload className="w-3.5 h-3.5" />
                               </button>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteKB(kb.kb_name);
-                              }}
-                              className="p-1 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors"
-                              title="删除知识库"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              {kb.chunk_count > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectKB(kb.kb_name);
+                                    onOpenChunkModal();
+                                  }}
+                                  className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
+                                  title="切片透视预览"
+                                >
+                                  <Layers className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteKB(kb.kb_name);
+                                }}
+                                className="p-1 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors"
+                                title="删除知识库"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
 
               {/* 上传解析反馈与提示 */}
               {isUploading && (

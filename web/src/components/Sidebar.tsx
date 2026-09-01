@@ -338,14 +338,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
-          {/* 顶部主指令列表（严格统一规范与紧凑间距：知识库 / 发起新对话 / 搜索对话内容） */}
+          {/* 顶部主指令列表（严格统一规范与像素级等高：知识库 / 发起新对话 / 搜索对话内容） */}
           <div className="p-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
             
-            {/* 1. 知识库统一条目 */}
+            {/* 1. 知识库统一条目 (固定 h-9 等高) */}
             <div>
               <div
                 onClick={handleToggleKBList}
-                className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-medium cursor-pointer transition-all group ${
+                className={`h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium cursor-pointer transition-all group ${
                   !isKBListCollapsed 
                     ? 'bg-surface border border-border text-ink-900 shadow-xs' 
                     : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'
@@ -355,7 +355,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Database className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
                   <span className="truncate">知识库</span>
                   {selectedKB && (
-                    <span className={`inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium truncate shadow-xs transition-opacity duration-150 ${
+                    <span className={`inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 h-5 rounded text-[10px] font-mono font-medium truncate shadow-xs transition-opacity duration-150 ${
                       !isKBListCollapsed ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                     }`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
@@ -363,7 +363,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   )}
                 </div>
-                <div className={`flex items-center gap-1 shrink-0 transition-opacity duration-150 ${
+                <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-150 ${
                   !isKBListCollapsed ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 }`}>
                   <button
@@ -373,12 +373,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setModalFeedback(null);
                       setIsCreateKBModalOpen(true);
                     }}
-                    className="p-0.5 rounded hover:bg-stone-200 text-ink-400 hover:text-ink-900 transition-colors cursor-pointer"
+                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-ink-400 hover:text-ink-900 transition-colors cursor-pointer"
                     title="新建知识库"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
-                  <ChevronDown className={`w-3.5 h-3.5 text-ink-400 transition-transform duration-200 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
+                  <div className="w-5 h-5 flex items-center justify-center text-ink-400">
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
+                  </div>
                 </div>
               </div>
 
@@ -391,7 +393,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setModalFeedback(null);
                         setIsCreateKBModalOpen(true);
                       }}
-                      className="px-2 py-1.5 rounded-lg text-center text-xs text-ink-500 hover:text-ink-900 hover:bg-subtle cursor-pointer transition-colors"
+                      className="h-8 px-2 rounded-lg flex items-center justify-center text-xs text-ink-500 hover:text-ink-900 hover:bg-subtle cursor-pointer transition-colors"
                     >
                       + 点击新建首个知识库
                     </div>
@@ -420,7 +422,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               }
                             }
                           }}
-                          className={`group/kb px-2 py-1 rounded-md text-xs flex items-center justify-between cursor-pointer transition-all ${
+                          className={`h-8 px-2 rounded-md text-xs flex items-center justify-between cursor-pointer transition-all ${
                             isDragged
                               ? 'border border-emerald-600 bg-emerald-50 text-emerald-900'
                               : isSelected
@@ -443,7 +445,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   setUploadFiles([]);
                                   setModalFeedback(null);
                                 }}
-                                className="p-0.5 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900"
+                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900"
                                 title="上传文档"
                               >
                                 <Upload className="w-3 h-3" />
@@ -455,7 +457,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     onSelectKB(kb.kb_name);
                                     onOpenChunkModal();
                                   }}
-                                  className="p-0.5 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900"
+                                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900"
                                   title="切片透视"
                                 >
                                   <Layers className="w-3 h-3" />
@@ -466,7 +468,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   e.stopPropagation();
                                   handleDeleteKB(kb.kb_name);
                                 }}
-                                className="p-0.5 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600"
+                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600"
                                 title="删除知识库"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -481,33 +483,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
 
-            {/* 2. 发起新对话统一条目 */}
+            {/* 2. 发起新对话统一条目 (固定 h-9 等高) */}
             <button
               type="button"
               onClick={onCreateSession}
-              className="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
             >
               <div className="flex items-center gap-2.5 truncate">
                 <Edit3 className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
                 <span>发起新对话</span>
               </div>
-              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity">⌘K</span>
+              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘K</span>
             </button>
 
-            {/* 3. 搜索对话内容统一条目（点击唤出居中搜索页面） */}
+            {/* 3. 搜索对话内容统一条目 (固定 h-9 等高) */}
             <button
               type="button"
               onClick={() => {
                 setSearchModalQuery('');
                 setIsSearchModalOpen(true);
               }}
-              className="w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
             >
               <div className="flex items-center gap-2.5 truncate">
                 <Search className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
                 <span>搜索对话内容</span>
               </div>
-              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity">⌘F</span>
+              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘F</span>
             </button>
 
           </div>
@@ -1051,7 +1053,7 @@ const SessionItem: React.FC<SessionItemProps> = ({
   return (
     <div
       onClick={onSelect}
-      className={`px-2.5 py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-between group text-xs font-medium ${
+      className={`h-9 w-full px-2.5 rounded-lg cursor-pointer transition-all flex items-center justify-between group text-xs font-medium ${
         isActive
           ? 'bg-surface border border-border text-ink-900 font-semibold shadow-xs'
           : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'

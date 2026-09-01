@@ -4,16 +4,14 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { 
   Trash2, 
-  BookOpen, 
   CornerDownLeft,
   Download,
   CheckCircle2,
   ChevronRight,
-  ArrowUpRight,
-  StopCircle
+  StopCircle,
+  Plus
 } from 'lucide-react';
-import type { ChatMessage, ReferenceItem, ChunkDetail } from '../types';
-import { api } from '../services/api';
+import type { ChatMessage, ReferenceItem } from '../types';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
@@ -65,23 +63,27 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     }
     let mdContent = `# ${sessionTitle}\n\n知识库: ${selectedKB}\n导出时间: ${new Date().toLocaleString()}\n\n---\n\n`;
     messages.forEach((m) => {
-      mdContent += `### ${m.role === 'user' ? '提问' : '研读回答'}\n\n${m.content}\n\n`;
-      if (m.references && m.references.length > 0) {
-        mdContent += `**参考资料:**\n`;
-        m.references.forEach((ref) => {
-          mdContent += `- [${ref.ref_id}] ${ref.doc_name} > ${ref.header_path} (相关度: ${ref.score})\n`;
-        });
-        mdContent += `\n`;
+      if (m.role === 'user') {
+        mdContent += `### 提问 (${new Date(m.timestamp).toLocaleTimeString()})\n\n${m.content}\n\n`;
+      } else {
+        mdContent += `### 回答\n\n${m.content}\n\n`;
+        if (m.references && m.references.length > 0) {
+          mdContent += `**参考依据**:\n`;
+          m.references.forEach((r) => {
+            mdContent += `- [${r.ref_id}] ${r.doc_name} (${r.header_path || '正文'}): ${r.snippet}\n`;
+          });
+          mdContent += `\n`;
+        }
       }
       mdContent += `---\n\n`;
     });
 
     const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${sessionTitle.replace(/[\\/:*?"<>|]/g, '_')}.md`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sessionTitle || '研读对话'}_${Date.now()}.md`;
+    link.click();
     URL.revokeObjectURL(url);
   };
 
@@ -92,10 +94,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         rehypePlugins={[rehypeHighlight]}
         components={{
           p: ({ children }) => (
-            <p className="leading-relaxed mb-3 last:mb-0 text-ink-900">{renderChildrenWithCitations(children, references)}</p>
+            <p className="leading-relaxed mb-4 text-ink-800 last:mb-0">
+              {renderChildrenWithCitations(children, references)}
+            </p>
           ),
           li: ({ children }) => (
-            <li className="leading-relaxed text-ink-900">{renderChildrenWithCitations(children, references)}</li>
+            <li className="leading-relaxed mb-1 text-ink-800">
+              {renderChildrenWithCitations(children, references)}
+            </li>
           ),
         }}
       >
@@ -104,7 +110,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     );
   };
 
-  const renderChildrenWithCitations = (children: React.ReactNode, references?: ReferenceItem[]): React.ReactNode => {
+  const renderChildrenWithCitations = (
+    children: React.ReactNode,
+    references?: ReferenceItem[]
+  ): React.ReactNode => {
     if (typeof children === 'string') {
       const parts = children.split(/(\[\d+\])/g);
       return parts.map((part, index) => {
@@ -135,125 +144,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return children;
   };
 
-  // 动态根据当前选中的知识库切片内容生成相关联的探索问题
-  const [dynamicQuestions, setDynamicQuestions] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!selectedKB) {
-      setDynamicQuestions([
-        '请在左侧选择或创建一个目标知识库',
-        '系统支持哪些文档格式的解析与切片？',
-        'NumPy 向量检索与 BM25 是如何多路融合的？',
-        '如何调用 Reranker 模块对候选切片进行二次精排？',
-      ]);
-      return;
-    }
-
-    let isMounted = true;
-    api
-      .listChunks(selectedKB, 20, 0)
-      .then((res: { total?: number; chunks?: ChunkDetail[] }) => {
-        if (!isMounted) return;
-        const chunks: ChunkDetail[] = res.chunks || [];
-        if (chunks.length === 0) {
-          setDynamicQuestions([
-            `知识库「${selectedKB}」暂无切片文档，请先在左侧上传文档`,
-            '支持 Word (.docx)、Markdown (.md) 和纯文本 (.txt) 文件导入',
-            '系统会自动提取 Word 标题层级转为 Markdown 面包屑',
-            '表格将自动还原为结构化 Markdown 表格以防数据断裂',
-          ]);
-          return;
-        }
-
-        // 提取所有不同的文档名和有意义的面包屑标题
-        const docNames: string[] = Array.from(new Set(chunks.map((c: ChunkDetail) => c.doc_name).filter(Boolean)));
-        const headers: string[] = Array.from(
-          new Set(
-            chunks
-              .map((c: ChunkDetail) => c.header_path)
-              .filter(Boolean)
-              .map((h: string) => h.replace(/^.*?>\s*/, '').trim()) // 提取叶子标题
-              .filter((h: string) => h.length > 2)
-          )
-        );
-
-        const generated: string[] = [];
-        const firstDoc = docNames.length > 0 ? docNames[0].replace(/\.(md|docx|txt)$/i, '') : '';
-        const secondDoc = docNames.length > 1 ? docNames[1].replace(/\.(md|docx|txt)$/i, '') : '';
-
-        const shortStr = (s: string) => s.length > 10 ? s.slice(0, 10) + '...' : s;
-        const d1 = shortStr(firstDoc);
-        const d2 = shortStr(secondDoc);
-        const kb = shortStr(selectedKB);
-
-        // 1. 文档概要类问题
-        if (firstDoc) {
-          generated.push(`总结《${d1}》的核心要点`);
-        } else {
-          generated.push(`概述「${kb}」的主要内容`);
-        }
-
-        // 2. 核心细节 / 背景经历 / 规范解析
-        if (headers.length > 0) {
-          generated.push(`简述【${shortStr(headers[0])}】的具体细节`);
-        } else if (secondDoc) {
-          generated.push(`解析《${d2}》的核心规范`);
-        } else if (firstDoc) {
-          generated.push(`梳理《${d1}》的关键信息`);
-        } else {
-          generated.push(`提炼知识库的核心业务流程`);
-        }
-
-        // 3. 术语 / 对比 / 知识图谱
-        if (docNames.length >= 2) {
-          generated.push(`对比《${d1}》与《${d2}》`);
-        } else if (headers.length >= 2) {
-          generated.push(`梳理【${shortStr(headers[1])}】的注意事项`);
-        } else {
-          generated.push(`整理知识库的核心术语清单`);
-        }
-
-        // 4. 常见问题 / 综合问答 / 实战应用
-        if (headers.length >= 3) {
-          generated.push(`列举【${shortStr(headers[2])}】的最佳实践`);
-        } else if (firstDoc) {
-          generated.push(`解答《${d1}》的常见疑问`);
-        } else {
-          generated.push(`解答疑问并提供相关出处`);
-        }
-
-        // 兜底保障：严格确保有且仅有 4 个完整且互不重复的示例问题
-        const fallbacks = [
-          `提炼当前知识库核心框架`,
-          `针对知识库内容深度提问`,
-          `梳理关键操作与标准规范`,
-          `解答业务疑问并标注原文`,
-        ];
-        for (const fb of fallbacks) {
-          if (!generated.includes(fb) && generated.length < 4) {
-            generated.push(fb);
-          }
-        }
-
-        setDynamicQuestions(generated.slice(0, 4));
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setDynamicQuestions([
-          `请全面概述知识库「${selectedKB}」包含的主要内容。`,
-          `提炼本知识库中的核心业务流程与设计规范。`,
-          `查找本知识库中的常见问题与标准处置 SOP。`,
-          `对比分析本知识库不同章节间的逻辑关联。`,
-        ]);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedKB]);
-
-  const sampleQuestions = dynamicQuestions;
-
   return (
     <div className="flex-1 flex flex-col h-screen bg-paper overflow-hidden relative">
 
@@ -281,38 +171,54 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       )}
 
-      {/* 消息滚动主区域 (Editorial Document Flow) */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8">
+      {/* 主工作区：自适应「居中 Hero 初始态」或「流式多轮对话态」 */}
+      <div className={`flex-1 overflow-y-auto ${messages.length === 0 ? 'flex flex-col justify-center items-center p-4' : 'p-4 sm:p-8 space-y-8'}`}>
+        
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center pt-[8vh] max-w-2xl mx-auto text-center space-y-6 animate-fade-in pb-6">
-            <div className="w-12 h-12 rounded-2xl bg-ink-900 text-white flex items-center justify-center shadow-md">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-ink-900 tracking-tight">
-                {sessionTitle === '新研读会话' || !sessionTitle ? '你好' : sessionTitle}
-              </h2>
-              <p className="text-xs text-ink-500 leading-relaxed max-w-md mx-auto">
-                已挂载目标知识库：<strong className="text-ink-900 font-semibold">{selectedKB || '请先在左侧选择知识库'}</strong>。
-              </p>
-            </div>
+          /* =========================================================================
+             对话刚建立时的居中 Hero 态（Gemini 风格：问候大标题 + 居中输入框）
+             ========================================================================= */
+          <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center animate-fade-in -mt-32 sm:-mt-40">
+            
+            {/* 顶端问候大标题 */}
+            <h1 className="text-2xl sm:text-3xl font-medium text-ink-900 tracking-tight text-center mb-7">
+              你今天在想些什么？
+            </h1>
 
-            {/* 快速探索卡片 */}
-            <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
-              {sampleQuestions.map((q, idx) => (
+            {/* 居中核心输入胶囊卡片 */}
+            <form 
+              onSubmit={handleSubmit} 
+              className="w-full bg-surface border border-border focus-within:border-stone-400 rounded-3xl p-3 sm:p-3.5 shadow-float transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-subtle text-ink-500 flex items-center justify-center shrink-0">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  autoFocus
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="有问必答，深度检索私域知识库..."
+                  className="w-full bg-transparent text-sm sm:text-base text-ink-900 placeholder:text-ink-400 focus:outline-none px-1"
+                />
                 <button
-                  key={idx}
-                  onClick={() => onSendMessage(q)}
-                  className="p-3 sm:p-4 rounded-xl bg-surface border border-border hover:border-stone-400 text-xs font-medium text-ink-900 hover:text-ink-900 transition-all shadow-card hover:shadow-float flex items-center justify-between group text-left"
+                  type="submit"
+                  disabled={!input.trim() || isStreaming}
+                  className="w-8 h-8 rounded-full bg-ink-900 hover:bg-accent-hover text-white flex items-center justify-center shrink-0 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-xs cursor-pointer"
+                  title="发送提问"
                 >
-                  <span className="leading-relaxed pr-2">{q}</span>
-                  <ArrowUpRight className="w-4 h-4 text-ink-400 group-hover:text-ink-900 flex-shrink-0 transition-colors" />
+                  <CornerDownLeft className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
+              </div>
+            </form>
+
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto space-y-8">
+          /* =========================================================================
+             多轮对话正文流 (存在消息时自顶向下排版)
+             ========================================================================= */
+          <div className="max-w-3xl mx-auto space-y-8 w-full">
             {messages.map((message) => {
               const isUser = message.role === 'user';
               const hasRefs = message.references && message.references.length > 0;
@@ -322,8 +228,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   {/* 用户提问渲染为典雅的章节标题 */}
                   {isUser ? (
                     <div className="pt-4 border-t border-border/80 first:border-t-0 first:pt-0">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-ink-400 uppercase tracking-wider mb-1.5">
-                        <span>提问</span>
+                      <div className="flex items-center justify-end text-[11px] font-mono text-ink-400 mb-1.5">
                         <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <h3 className="text-lg font-semibold text-ink-900 font-sans tracking-tight leading-snug">
@@ -361,8 +266,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         )}
                       </div>
 
-
-
                     </div>
                   )}
                 </div>
@@ -373,50 +276,52 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         )}
       </div>
 
-      {/* 底部悬浮极简指令输入坞 (Floating Studio Command Dock) */}
-      <div className="p-4 sm:p-6 bg-gradient-to-t from-paper via-paper to-transparent z-10 flex-shrink-0">
-        <div className="max-w-3xl mx-auto">
-          
-          <form onSubmit={handleSubmit} className="bg-surface border border-border focus-within:border-stone-500 rounded-2xl p-3 shadow-float transition-all">
-            <textarea
-              ref={textareaRef}
-              rows={2}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="向知识库提出深度问题，或输入指令（支持多文档关联推理）..."
-              className="w-full bg-transparent text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none resize-none px-2 leading-relaxed"
-            />
+      {/* 底部悬浮输入坞（仅当有对话消息时显示于底部） */}
+      {messages.length > 0 && (
+        <div className="p-4 sm:p-6 bg-gradient-to-t from-paper via-paper to-transparent z-10 flex-shrink-0">
+          <div className="max-w-3xl mx-auto">
+            
+            <form onSubmit={handleSubmit} className="bg-surface border border-border focus-within:border-stone-500 rounded-2xl p-3 shadow-float transition-all">
+              <textarea
+                ref={textareaRef}
+                rows={2}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="向知识库提出深度问题，或输入指令（支持多文档关联推理）..."
+                className="w-full bg-transparent text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none resize-none px-2 leading-relaxed"
+              />
 
-            <div className="flex items-center justify-between pt-2 px-1 text-xs border-t border-border/60">
-              <div className="flex items-center space-x-2 text-ink-500">
-              </div>
+              <div className="flex items-center justify-between pt-2 px-1 text-xs border-t border-border/60">
+                <div className="flex items-center space-x-2 text-ink-500">
+                </div>
 
-              <div className="flex items-center gap-2">
-                {isStreaming ? (
-                  <button
-                    type="button"
-                    onClick={onStopGeneration}
-                    className="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-sm transition-all"
-                  >
-                    <StopCircle className="w-3.5 h-3.5" />
-                    <span>停止生成</span>
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={!input.trim()}
-                    className="bg-ink-900 hover:bg-accent-hover disabled:opacity-40 disabled:pointer-events-none text-white px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition-all"
-                  >
-                    <span>提问</span>
-                    <CornerDownLeft className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isStreaming ? (
+                    <button
+                      type="button"
+                      onClick={onStopGeneration}
+                      className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-sm transition-all cursor-pointer"
+                    >
+                      <StopCircle className="w-3.5 h-3.5" />
+                      <span>停止</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={!input.trim()}
+                      className="w-8 h-8 rounded-full bg-ink-900 hover:bg-accent-hover disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center shadow-xs transition-all cursor-pointer"
+                      title="发送 (Enter)"
+                    >
+                      <CornerDownLeft className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

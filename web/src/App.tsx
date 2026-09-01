@@ -385,8 +385,6 @@ export const App: React.FC = () => {
         onStopGeneration={handleStopGeneration}
         onClearMessages={handleClearCurrentMessages}
         onOpenCitation={handleOpenCitation}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={handleToggleSidebar}
       />
 
       {/* 侧边滑出：引用溯源抽屉 */}

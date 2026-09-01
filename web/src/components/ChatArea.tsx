@@ -10,8 +10,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ArrowUpRight,
-  StopCircle,
-  PanelLeft
+  StopCircle
 } from 'lucide-react';
 import type { ChatMessage, ReferenceItem, ChunkDetail } from '../types';
 import { api } from '../services/api';
@@ -25,8 +24,6 @@ interface ChatAreaProps {
   onStopGeneration: () => void;
   onClearMessages: () => void;
   onOpenCitation: (refId: number, references?: ReferenceItem[]) => void;
-  isSidebarCollapsed?: boolean;
-  onToggleSidebar?: () => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -38,8 +35,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onStopGeneration,
   onClearMessages,
   onOpenCitation,
-  isSidebarCollapsed = false,
-  onToggleSidebar,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -261,18 +256,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-paper overflow-hidden relative">
-      {/* 展开侧边栏浮动入口（当侧边栏收起时显示） */}
-      {isSidebarCollapsed && onToggleSidebar && (
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="absolute top-3.5 left-3.5 z-30 p-1.5 rounded-lg bg-surface/90 hover:bg-surface text-ink-600 hover:text-ink-900 border border-border shadow-xs backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1.5 text-xs"
-          title="展开侧边栏 (Ctrl+B)"
-        >
-          <PanelLeft className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-medium hidden sm:inline">展开侧栏</span>
-        </button>
-      )}
 
       {/* 顶部轻量浮动操作胶囊（存在会话消息时浮现） */}
       {messages.length > 0 && (

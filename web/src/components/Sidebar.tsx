@@ -306,167 +306,296 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       <aside 
         style={{ 
-          width: isCollapsed ? 0 : `${width}px`,
-          borderRightWidth: isCollapsed ? 0 : '1px',
-          opacity: isCollapsed ? 0 : 1
+          width: isCollapsed ? '56px' : `${width}px`,
+          borderRightWidth: '1px'
         }}
         className={`relative bg-paper border-border flex-shrink-0 z-20 h-screen overflow-hidden ${
-          isResizing ? 'select-none' : 'transition-[width,opacity] duration-300 ease-in-out'
+          isResizing ? 'select-none' : 'transition-[width] duration-200 ease-in-out'
         }`}
       >
-        <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
-        
-          {/* 顶部主指令与品牌区（无缝收紧，无中间分割线） */}
-          <div className="p-2.5 pt-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
-            
-            {/* 侧边栏顶端：品牌 Logo 与折叠按钮 (h-9 等高，紧凑排布) */}
-            <div className="h-9 px-2.5 flex items-center justify-between select-none">
-              <div className="flex items-center gap-2.5">
-                <div className="w-5 h-5 rounded-md bg-ink-900 flex items-center justify-center text-white shadow-xs">
-                  <BookOpen className="w-3 h-3 text-white" />
-                </div>
-                <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
-              </div>
+        {isCollapsed ? (
+          /* =========================================================================
+             折叠收起态：Gemini 浅色风极简图标导航轨 (Slim Mini Icon Rail - 56px)
+             ========================================================================= */
+          <div className="w-14 h-full flex flex-col justify-between items-center py-3 select-none">
+            {/* 上部核心功能图标组 */}
+            <div className="flex flex-col items-center gap-1.5 w-full">
+              {/* 展开菜单按钮 */}
               {onToggleCollapse && (
+                <div className="relative group flex items-center justify-center mb-1">
+                  <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    className="w-9 h-9 rounded-xl hover:bg-subtle text-ink-600 hover:text-ink-900 flex items-center justify-center transition-colors cursor-pointer"
+                    title="展开侧边栏 (Ctrl+B)"
+                  >
+                    <PanelLeft className="w-4 h-4" />
+                  </button>
+                  <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-border/40">
+                    展开侧边栏 (Ctrl+B)
+                  </span>
+                </div>
+              )}
+
+              {/* ✏️ 发起新对话 */}
+              <div className="relative group flex items-center justify-center">
                 <button
                   type="button"
-                  onClick={onToggleCollapse}
-                  className="p-1 rounded-md text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
-                  title="收起侧边栏 (Ctrl+B)"
+                  onClick={onCreateSession}
+                  className="w-9 h-9 rounded-xl hover:bg-subtle text-ink-600 hover:text-ink-900 flex items-center justify-center transition-colors cursor-pointer"
+                  title="发起新对话 (Ctrl+K)"
                 >
-                  <PanelLeft className="w-3.5 h-3.5" />
+                  <Edit3 className="w-4 h-4" />
                 </button>
-              )}
+                <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-border/40">
+                  发起新对话 (Ctrl+K)
+                </span>
+              </div>
+
+              {/* 🔍 全局搜索对话 */}
+              <div className="relative group flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchModalQuery('');
+                    setIsSearchModalOpen(true);
+                  }}
+                  className="w-9 h-9 rounded-xl hover:bg-subtle text-ink-600 hover:text-ink-900 flex items-center justify-center transition-colors cursor-pointer"
+                  title="搜索对话内容 (Ctrl+F)"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-border/40">
+                  搜索对话内容 (Ctrl+F)
+                </span>
+              </div>
+
+              {/* 🎓 知识库管理中心 (带活跃指示绿点) */}
+              <div className="relative group flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKbFilterQuery('');
+                    setIsKBHubModalOpen(true);
+                  }}
+                  className="w-9 h-9 rounded-xl hover:bg-subtle text-ink-600 hover:text-ink-900 flex items-center justify-center transition-colors cursor-pointer relative"
+                  title="私域知识库管理"
+                >
+                  <Database className="w-4 h-4" />
+                  {selectedKB && (
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-600 ring-2 ring-paper" />
+                  )}
+                </button>
+                <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 border border-border/40 flex items-center gap-1.5">
+                  <span>知识库管理中心</span>
+                  {selectedKB && <span className="text-emerald-400 font-mono">({selectedKB})</span>}
+                </span>
+              </div>
+
+              {/* 🎛️ 检索实验台 */}
+              <div className="relative group flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={onOpenPlaygroundModal}
+                  className="w-9 h-9 rounded-xl hover:bg-subtle text-ink-600 hover:text-ink-900 flex items-center justify-center transition-colors cursor-pointer"
+                  title="底层多路检索实验台"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+                <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-border/40">
+                  底层多路检索实验台 (Playground)
+                </span>
+              </div>
+
+              {/* 📑 切片透视 */}
+              <div className="relative group flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedKB) onOpenChunkModal();
+                    else setIsKBHubModalOpen(true);
+                  }}
+                  className="w-9 h-9 rounded-xl hover:bg-subtle text-ink-600 hover:text-ink-900 flex items-center justify-center transition-colors cursor-pointer"
+                  title="切片透视分析"
+                >
+                  <Layers className="w-4 h-4" />
+                </button>
+                <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-border/40">
+                  切片透视分析 {selectedKB ? `(${selectedKB})` : ''}
+                </span>
+              </div>
             </div>
+
+            {/* 底部用户头像 */}
+            <div className="flex flex-col items-center gap-2.5 w-full">
+              <div className="relative group flex items-center justify-center">
+                <div className="w-7 h-7 rounded-full bg-stone-200 border border-border text-ink-700 font-bold text-[10px] flex items-center justify-center shadow-xs cursor-pointer">
+                  LQ
+                </div>
+                <span className="absolute left-14 ml-2 px-2.5 py-1 bg-ink-900 text-white text-[11px] font-medium rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-border/40">
+                  LQ · 工程研究员
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* =========================================================================
+             展开态：完整常规侧边栏 (280px)
+             ========================================================================= */
+          <div style={{ width: `${width}px` }} className="flex flex-col justify-between h-full">
             
-            {/* 1. 知识库统一条目 (固定 h-9 等高，点击唤出居中知识库管理中心卡片) */}
-            <button
-              type="button"
-              onClick={() => {
-                setKbFilterQuery('');
-                setIsKBHubModalOpen(true);
-              }}
-              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
-            >
-              <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                <Database className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
-                <span>知识库</span>
-                {selectedKB && (
-                  <span className="inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 h-5 rounded text-[10px] font-mono font-medium truncate shadow-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                    <span className="truncate max-w-[80px]">{selectedKB}</span>
-                  </span>
+            {/* 顶部主指令与品牌区（无缝收紧，无中间分割线） */}
+            <div className="p-2.5 pt-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
+              
+              {/* 侧边栏顶端：品牌 Logo 与折叠按钮 (h-9 等高，紧凑排布) */}
+              <div className="h-9 px-2.5 flex items-center justify-between select-none">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-ink-900 flex items-center justify-center text-white shadow-xs">
+                    <BookOpen className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
+                </div>
+                {onToggleCollapse && (
+                  <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    className="p-1 rounded-md text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
+                    title="收起侧边栏 (Ctrl+B)"
+                  >
+                    <PanelLeft className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
-              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">HUB</span>
-            </button>
+              
+              {/* 1. 知识库统一条目 (固定 h-9 等高，点击唤出居中知识库管理中心卡片) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setKbFilterQuery('');
+                  setIsKBHubModalOpen(true);
+                }}
+                className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
+                  <Database className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
+                  <span>知识库</span>
+                  {selectedKB && (
+                    <span className="inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 h-5 rounded text-[10px] font-mono font-medium truncate shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                      <span className="truncate max-w-[80px]">{selectedKB}</span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">HUB</span>
+              </button>
 
-            {/* 2. 发起新对话统一条目 (固定 h-9 等高) */}
-            <button
-              type="button"
-              onClick={onCreateSession}
-              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
-            >
-              <div className="flex items-center gap-2.5 truncate">
-                <Edit3 className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
-                <span>发起新对话</span>
+              {/* 2. 发起新对话统一条目 (固定 h-9 等高) */}
+              <button
+                type="button"
+                onClick={onCreateSession}
+                className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Edit3 className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
+                  <span>发起新对话</span>
+                </div>
+                <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘K</span>
+              </button>
+
+              {/* 3. 搜索对话内容统一条目 (固定 h-9 等高，点击唤出居中搜索页面) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchModalQuery('');
+                  setIsSearchModalOpen(true);
+                }}
+                className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Search className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
+                  <span>搜索对话内容</span>
+                </div>
+                <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘F</span>
+              </button>
+
+              {/* 4. 检索实验台统一条目 (固定 h-9 等高，点击唤出居中卡片) */}
+              <button
+                type="button"
+                onClick={onOpenPlaygroundModal}
+                className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <SlidersHorizontal className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
+                  <span>检索实验台</span>
+                </div>
+                <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">LAB</span>
+              </button>
+
+            </div>
+
+            {/* 中部：历史对话列表（纯净平铺连续条目） */}
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">
+                  近期研读记录
+                </span>
+                {sessions.length > 0 && (
+                  <button
+                    onClick={onClearSessions}
+                    className="text-[10px] text-ink-400 hover:text-rose-600 transition-colors cursor-pointer"
+                    title="清空当前知识库的所有会话记录"
+                  >
+                    清空
+                  </button>
+                )}
               </div>
-              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘K</span>
-            </button>
 
-            {/* 3. 搜索对话内容统一条目 (固定 h-9 等高，点击唤出居中搜索页面) */}
-            <button
-              type="button"
-              onClick={() => {
-                setSearchModalQuery('');
-                setIsSearchModalOpen(true);
-              }}
-              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
-            >
-              <div className="flex items-center gap-2.5 truncate">
-                <Search className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
-                <span>搜索对话内容</span>
-              </div>
-              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘F</span>
-            </button>
-
-            {/* 4. 检索实验台统一条目 (固定 h-9 等高，点击唤出居中卡片) */}
-            <button
-              type="button"
-              onClick={onOpenPlaygroundModal}
-              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
-            >
-              <div className="flex items-center gap-2.5 truncate">
-                <SlidersHorizontal className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
-                <span>检索实验台</span>
-              </div>
-              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">LAB</span>
-            </button>
-
-          </div>
-
-          {/* 中部：历史对话列表（纯净平铺连续条目） */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">
-                近期研读记录
-              </span>
-              {sessions.length > 0 && (
-                <button
-                  onClick={onClearSessions}
-                  className="text-[10px] text-ink-400 hover:text-rose-600 transition-colors cursor-pointer"
-                  title="清空当前知识库的所有会话记录"
-                >
-                  清空
-                </button>
+              {sessions.length === 0 ? (
+                <div className="text-center py-8 text-ink-400 text-xs font-serif italic">
+                  暂无对话，点击上方「发起新对话」
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {sessions.map((s) => (
+                    <SessionItem
+                      key={s.id}
+                      session={s}
+                      isActive={s.id === activeSessionId}
+                      isEditing={s.id === editingSessionId}
+                      editTitle={editingTitle}
+                      setEditTitle={setEditingTitle}
+                      onSelect={() => onSelectSession(s.id)}
+                      onStartRename={(e) => {
+                        e.stopPropagation();
+                        setEditingSessionId(s.id);
+                        setEditingTitle(s.title);
+                      }}
+                      onSaveRename={() => handleSaveRename(s.id)}
+                      onDelete={(e) => {
+                        e.stopPropagation();
+                        onDeleteSession(s.id);
+                      }}
+                    />
+                  ))}
+                </div>
               )}
             </div>
 
-            {sessions.length === 0 ? (
-              <div className="text-center py-8 text-ink-400 text-xs font-serif italic">
-                暂无对话，点击上方「发起新对话」
+            {/* 底部：用户信息与状态栏 */}
+            <div className="p-3 border-t border-border bg-paper flex items-center justify-between text-xs text-ink-500 flex-shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-full bg-stone-300 flex items-center justify-center text-[10px] font-bold text-ink-700">
+                  LQ
+                </div>
+                <span className="text-xs font-semibold text-ink-900">工程研究员</span>
               </div>
-            ) : (
-              <div className="space-y-0.5">
-                {sessions.map((s) => (
-                  <SessionItem
-                    key={s.id}
-                    session={s}
-                    isActive={s.id === activeSessionId}
-                    isEditing={s.id === editingSessionId}
-                    editTitle={editingTitle}
-                    setEditTitle={setEditingTitle}
-                    onSelect={() => onSelectSession(s.id)}
-                    onStartRename={(e) => {
-                      e.stopPropagation();
-                      setEditingSessionId(s.id);
-                      setEditingTitle(s.title);
-                    }}
-                    onSaveRename={() => handleSaveRename(s.id)}
-                    onDelete={(e) => {
-                      e.stopPropagation();
-                      onDeleteSession(s.id);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 底部：用户信息与状态栏 */}
-          <div className="p-3 border-t border-border bg-paper flex items-center justify-between text-xs text-ink-500 flex-shrink-0">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 rounded-full bg-stone-300 flex items-center justify-center text-[10px] font-bold text-ink-700">
-                LQ
-              </div>
-              <span className="text-xs font-semibold text-ink-900">工程研究员</span>
+              <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                MCP READY
+              </span>
             </div>
-            <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              MCP READY
-            </span>
-          </div>
 
-        </div>
+          </div>
+        )}
 
         {/* 侧边隐形极细调节把手 */}
         {onWidthChange && !isCollapsed && (

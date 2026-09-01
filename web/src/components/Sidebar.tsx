@@ -212,9 +212,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       // If initial documents were chosen, upload and index them
       if (createKBFiles.length > 0) {
-        const resList = await api.uploadDocuments(kbName, createKBFiles);
-        const totalChunks = resList.reduce((acc: number, curr: any) => acc + (curr.chunk_count || 0), 0);
-        console.log(`Uploaded ${createKBFiles.length} docs, generated ${totalChunks} chunks`);
+        await api.uploadDocuments(kbName, createKBFiles);
       }
 
       onRefreshKBs();
@@ -312,55 +310,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
-          {/* 上半部分：知识库管理与会话搜索区 */}
-          <div className="p-3.5 space-y-3.5 flex-shrink-0 border-b border-border/80">
+          {/* 顶部主指令列表（严格统一规范：知识库 / 发起新对话 / 搜索对话内容） */}
+          <div className="p-3 space-y-1 flex-shrink-0 border-b border-border/80">
             
-            {/* 1. 知识库列表区域 */}
+            {/* 1. 知识库统一条目 */}
             <div>
-              <div className="flex items-center justify-between text-[11px] font-semibold text-ink-500 uppercase tracking-wider mb-2">
-                <button
-                  type="button"
-                  onClick={handleToggleKBList}
-                  className="flex items-center gap-1.5 hover:text-ink-900 transition-colors cursor-pointer group text-left max-w-[calc(100%-4rem)] truncate"
-                  title={isKBListCollapsed ? '点击展开完整知识库列表' : '点击收起知识库列表'}
-                >
-                  <ChevronDown className={`w-3.5 h-3.5 text-ink-400 group-hover:text-ink-900 transition-transform duration-200 shrink-0 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
-                  <Database className="w-3.5 h-3.5 text-ink-700 shrink-0" />
-                  <span className="font-semibold text-ink-700 shrink-0">知识库</span>
-                  
-                  {/* 收起状态下，直接在文字旁边展示当前使用的知识库 Tag 胶囊 */}
-                  {isKBListCollapsed && selectedKB ? (
-                    <span className="inline-flex items-center gap-1 bg-surface text-ink-900 border border-border px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium truncate shadow-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0 animate-pulse-subtle" />
-                      <span className="truncate max-w-[90px]">{selectedKB}</span>
+              <div
+                onClick={handleToggleKBList}
+                className={`w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-xs font-medium cursor-pointer transition-all ${
+                  !isKBListCollapsed 
+                    ? 'bg-surface border border-border text-ink-900 shadow-card' 
+                    : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
+                  <Database className="w-4 h-4 text-ink-500 shrink-0" />
+                  <span className="truncate">知识库</span>
+                  {selectedKB && (
+                    <span className="inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium truncate shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                      <span className="truncate max-w-[80px]">{selectedKB}</span>
                     </span>
-                  ) : (
-                    <span className="text-[10px] font-mono font-normal text-ink-400">({knowledgeBases.length})</span>
                   )}
-                </button>
-                <button 
-                  onClick={() => {
-                    setModalFeedback(null);
-                    setIsCreateKBModalOpen(true);
-                  }}
-                  className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer shrink-0"
-                  title="新建知识库"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span className="text-xs">新建</span>
-                </button>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModalFeedback(null);
+                      setIsCreateKBModalOpen(true);
+                    }}
+                    className="p-1 rounded hover:bg-stone-200 text-ink-400 hover:text-ink-900 transition-colors cursor-pointer"
+                    title="新建知识库"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <ChevronDown className={`w-3.5 h-3.5 text-ink-400 transition-transform duration-200 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
+                </div>
               </div>
 
-              {/* 仅在展开态展示全部知识库直列项 */}
+              {/* 展开态：知识库子项列表 */}
               {!isKBListCollapsed && (
-                <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5 animate-fade-in">
+                <div className="mt-1 pl-3 pr-1 py-1 space-y-1 max-h-40 overflow-y-auto animate-fade-in border-l-2 border-border ml-3">
                   {knowledgeBases.length === 0 ? (
                     <div 
                       onClick={() => {
                         setModalFeedback(null);
                         setIsCreateKBModalOpen(true);
                       }}
-                      className="bg-surface border border-dashed border-border rounded-xl px-3 py-3 text-center text-xs text-ink-500 cursor-pointer hover:border-stone-400 transition-colors"
+                      className="px-2.5 py-2 rounded-lg text-center text-xs text-ink-500 hover:text-ink-900 hover:bg-subtle cursor-pointer transition-colors"
                     >
                       + 点击新建首个知识库
                     </div>
@@ -389,27 +388,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               }
                             }
                           }}
-                          className={`group/kb rounded-xl px-2.5 py-2 transition-all cursor-pointer flex items-center justify-between border ${
+                          className={`group/kb px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-all ${
                             isDragged
-                              ? 'border-emerald-600 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
+                              ? 'border border-emerald-600 bg-emerald-50 text-emerald-900'
                               : isSelected
-                              ? 'bg-surface border-border shadow-card ring-1 ring-ink-900/10'
-                              : 'bg-transparent border-transparent hover:bg-subtle/70 text-ink-700'
+                              ? 'bg-surface border border-border text-ink-900 font-semibold shadow-xs'
+                              : 'hover:bg-subtle text-ink-700 hover:text-ink-900'
                           }`}
                         >
-                          <div className="flex items-center space-x-2 truncate flex-1 min-w-0 pr-1">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-emerald-600' : 'bg-stone-300'}`} />
-                            <span className={`text-xs truncate ${isSelected ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
-                              {kb.kb_name}
-                            </span>
+                          <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-emerald-600' : 'bg-stone-300'}`} />
+                            <span className="truncate">{kb.kb_name}</span>
                           </div>
-
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            {/* 默认常驻切片数量，Hover 时切换为快捷操作按钮 */}
-                            <span className="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded border border-border/80 group-hover/kb:hidden">
-                              {kb.chunk_count} 切片
-                            </span>
-
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] font-mono text-ink-400 group-hover/kb:hidden">{kb.chunk_count}</span>
                             <div className="hidden group-hover/kb:flex items-center gap-0.5">
                               <button
                                 onClick={(e) => {
@@ -419,10 +411,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   setUploadFiles([]);
                                   setModalFeedback(null);
                                 }}
-                                className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
-                                title={`向 ${kb.kb_name} 上传文档 (.docx/.md/.txt)`}
+                                className="p-0.5 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900"
+                                title="上传文档"
                               >
-                                <Upload className="w-3.5 h-3.5" />
+                                <Upload className="w-3 h-3" />
                               </button>
                               {kb.chunk_count > 0 && (
                                 <button
@@ -431,10 +423,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     onSelectKB(kb.kb_name);
                                     onOpenChunkModal();
                                   }}
-                                  className="p-1 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors"
-                                  title="切片透视预览"
+                                  className="p-0.5 rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900"
+                                  title="切片透视"
                                 >
-                                  <Layers className="w-3.5 h-3.5" />
+                                  <Layers className="w-3 h-3" />
                                 </button>
                               )}
                               <button
@@ -442,10 +434,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   e.stopPropagation();
                                   handleDeleteKB(kb.kb_name);
                                 }}
-                                className="p-1 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors"
+                                className="p-0.5 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600"
                                 title="删除知识库"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
                           </div>
@@ -457,30 +449,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
 
-            {/* 2. 搜索与新建对话 */}
-            <div className="pt-1 flex items-center gap-2">
-              <div className="relative flex-1 flex items-center">
-                <Search className="w-3.5 h-3.5 text-ink-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={sessionSearch}
-                  onChange={(e) => setSessionSearch(e.target.value)}
-                  placeholder="搜索研读历史..."
-                  className="w-full bg-surface border border-border text-xs text-ink-900 pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-stone-400 placeholder:text-ink-400 shadow-card"
-                />
+            {/* 2. 发起新对话统一条目 */}
+            <button
+              type="button"
+              onClick={onCreateSession}
+              className="w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <Edit3 className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0" />
+                <span>发起新对话</span>
               </div>
-              <button
-                onClick={onCreateSession}
-                className="flex items-center justify-center bg-surface hover:bg-subtle border border-border rounded-lg p-1.5 shrink-0 shadow-card hover:border-stone-400 transition-all group"
-                title="新建当前库的研读对话"
-              >
-                <Plus className="w-4 h-4 text-ink-700 group-hover:text-ink-900 transition-transform group-hover:rotate-90" />
-              </button>
+              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity">⌘K</span>
+            </button>
+
+            {/* 3. 搜索对话内容统一条目 */}
+            <div className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 bg-surface/60 hover:bg-surface border border-border focus-within:border-stone-400 focus-within:bg-surface text-xs transition-all shadow-xs">
+              <Search className="w-4 h-4 text-ink-400 shrink-0 pointer-events-none" />
+              <input
+                type="text"
+                value={sessionSearch}
+                onChange={(e) => setSessionSearch(e.target.value)}
+                placeholder="搜索对话内容"
+                className="w-full bg-transparent text-xs text-ink-900 placeholder:text-ink-400 focus:outline-none"
+              />
+              {sessionSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSessionSearch('')}
+                  className="text-ink-400 hover:text-ink-900 p-0.5 rounded cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
 
           </div>
 
-          {/* 中部：选中知识库的历史对话列表 */}
+          {/* 中部：历史对话列表（统一单行条目规范） */}
           <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">
             <div className="flex items-center justify-between px-1">
               <span className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">
@@ -489,7 +494,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {sessions.length > 0 && (
                 <button
                   onClick={onClearSessions}
-                  className="text-[10px] text-ink-400 hover:text-rose-600 transition-colors"
+                  className="text-[10px] text-ink-400 hover:text-rose-600 transition-colors cursor-pointer"
                   title="清空当前知识库的所有会话记录"
                 >
                   清空
@@ -499,7 +504,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {filteredSessions.length === 0 ? (
               <div className="text-center py-8 text-ink-400 text-xs font-serif italic">
-                {sessionSearch ? '未搜索到相关会话' : '暂无对话，点击上方「+」新建'}
+                {sessionSearch ? '未搜索到相关会话' : '暂无对话，点击上方「发起新对话」'}
               </div>
             ) : (
               <div className="space-y-1">
@@ -943,15 +948,15 @@ const SessionItem: React.FC<SessionItemProps> = ({
   return (
     <div
       onClick={onSelect}
-      className={`px-2.5 py-2 rounded-xl cursor-pointer transition-all flex items-center justify-between group text-xs ${
+      className={`px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center justify-between group text-xs font-medium ${
         isActive
           ? 'bg-surface border border-border text-ink-900 font-semibold shadow-card'
-          : 'hover:bg-subtle text-ink-700 border border-transparent'
+          : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'
       }`}
     >
-      <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-1">
+      <div className="flex items-center gap-2.5 truncate flex-1 min-w-0 pr-1">
         <MessageSquare
-          className={`w-3.5 h-3.5 flex-shrink-0 ${
+          className={`w-4 h-4 flex-shrink-0 ${
             isActive ? 'text-ink-900' : 'text-ink-400 group-hover:text-ink-700'
           }`}
         />
@@ -979,14 +984,14 @@ const SessionItem: React.FC<SessionItemProps> = ({
           <div className="hidden group-hover:flex items-center gap-0.5">
             <button
               onClick={onStartRename}
-              className="p-1 rounded hover:bg-stone-200 text-ink-400 hover:text-ink-900 transition-colors"
+              className="p-1 rounded hover:bg-stone-200 text-ink-400 hover:text-ink-900 transition-colors cursor-pointer"
               title="重命名会话"
             >
               <Edit3 className="w-3 h-3" />
             </button>
             <button
               onClick={onDelete}
-              className="p-1 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors"
+              className="p-1 rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors cursor-pointer"
               title="删除会话"
             >
               <Trash2 className="w-3 h-3" />

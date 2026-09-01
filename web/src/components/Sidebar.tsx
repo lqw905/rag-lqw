@@ -69,6 +69,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isUploadDragging, setIsUploadDragging] = useState(false);
   const dedicatedFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Dedicated Spotlight Search Modal State
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchModalQuery, setSearchModalQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Global Submitting / Status feedback inside modals
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -98,8 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Quick drag-and-drop state on sidebar items
   const [dragOverKB, setDragOverKB] = useState<string | null>(null);
 
-  // Session Search & Rename State
-  const [sessionSearch, setSessionSearch] = useState('');
+  // Inline Session Rename State
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
@@ -107,16 +111,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const isResizingRef = useRef(false);
 
-  // Global shortcut: ⌘K / Ctrl+K to create a new session; ⌘B / Ctrl+B to toggle sidebar; Escape to close modals
+  // Global shortcuts:
+  // - ⌘K / Ctrl+K: 新建对话
+  // - ⌘F / Ctrl+F / ⌘P: 打开对话搜索页面
+  // - ⌘B / Ctrl+B: 收起/展开侧边栏
+  // - Escape: 关闭任何打开的模态卡片
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (isSearchModalOpen) setIsSearchModalOpen(false);
         if (isCreateKBModalOpen) setIsCreateKBModalOpen(false);
         if (uploadModalKB) setUploadModalKB(null);
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         onCreateSession();
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'p')) {
+        e.preventDefault();
+        setSearchModalQuery('');
+        setIsSearchModalOpen(true);
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b' && onToggleCollapse) {
         e.preventDefault();
@@ -125,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen, uploadModalKB]);
+  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen, uploadModalKB, isSearchModalOpen]);
 
   // Handle Drag Resizing
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -163,14 +177,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  // Filter sessions
-  const filteredSessions = useMemo(() => {
-    if (!sessionSearch.trim()) return sessions;
-    const q = sessionSearch.toLowerCase();
-    return sessions.filter((s) => s.title.toLowerCase().includes(q));
-  }, [sessions, sessionSearch]);
+  // Format date helper for search list and recent sessions
+  const formatFriendlyDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterday = today - 86400000;
 
-  // Group sessions by Today vs Earlier
+    if (timestamp >= today) {
+      return '今天';
+    } else if (timestamp >= yesterday) {
+      return '昨天';
+    } else {
+      return `${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+  };
+
+  // Filtered sessions for the search modal
+  const modalFilteredSessions = useMemo(() => {
+    if (!searchModalQuery.trim()) return sessions;
+    const q = searchModalQuery.toLowerCase();
+    return sessions.filter((s) => s.title.toLowerCase().includes(q));
+  }, [sessions, searchModalQuery]);
+
+  // Group sessions by Today vs Earlier for Sidebar list
   const { todaySessions, earlierSessions } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -179,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const todayList: ChatSession[] = [];
     const earlierList: ChatSession[] = [];
 
-    filteredSessions.forEach((s) => {
+    sessions.forEach((s) => {
       if (s.updated_at >= todayTimestamp) {
         todayList.push(s);
       } else {
@@ -188,7 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
 
     return { todaySessions: todayList, earlierSessions: earlierList };
-  }, [filteredSessions]);
+  }, [sessions]);
 
   // Filter supported files helper
   const filterSupportedFiles = (files: FileList | File[]) => {
@@ -210,7 +240,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const kbName = newKBName.trim();
       await api.createKnowledgeBase(kbName, newKBDesc.trim());
 
-      // If initial documents were chosen, upload and index them
       if (createKBFiles.length > 0) {
         await api.uploadDocuments(kbName, createKBFiles);
       }
@@ -218,7 +247,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onRefreshKBs();
       onSelectKB(kbName);
 
-      // Reset and close
       setNewKBName('');
       setNewKBDesc('');
       setCreateKBFiles([]);
@@ -462,26 +490,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity">⌘K</span>
             </button>
 
-            {/* 3. 搜索对话内容统一条目 */}
-            <div className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 bg-surface/60 hover:bg-surface border border-border focus-within:border-stone-400 focus-within:bg-surface text-xs transition-all shadow-xs">
-              <Search className="w-4 h-4 text-ink-400 shrink-0 pointer-events-none" />
-              <input
-                type="text"
-                value={sessionSearch}
-                onChange={(e) => setSessionSearch(e.target.value)}
-                placeholder="搜索对话内容"
-                className="w-full bg-transparent text-xs text-ink-900 placeholder:text-ink-400 focus:outline-none"
-              />
-              {sessionSearch && (
-                <button
-                  type="button"
-                  onClick={() => setSessionSearch('')}
-                  className="text-ink-400 hover:text-ink-900 p-0.5 rounded cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+            {/* 3. 搜索对话内容统一条目（点击唤出居中搜索页面） */}
+            <button
+              type="button"
+              onClick={() => {
+                setSearchModalQuery('');
+                setIsSearchModalOpen(true);
+              }}
+              className="w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <Search className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0" />
+                <span>搜索对话内容</span>
+              </div>
+              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity">⌘F</span>
+            </button>
 
           </div>
 
@@ -502,9 +525,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
 
-            {filteredSessions.length === 0 ? (
+            {sessions.length === 0 ? (
               <div className="text-center py-8 text-ink-400 text-xs font-serif italic">
-                {sessionSearch ? '未搜索到相关会话' : '暂无对话，点击上方「发起新对话」'}
+                暂无对话，点击上方「发起新对话」
               </div>
             ) : (
               <div className="space-y-1">
@@ -598,6 +621,82 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
       </aside>
+
+      {/* 🔍 全局居中搜索对话页面（Spotlight / Command Palette 风格） */}
+      {isSearchModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+          onClick={() => setIsSearchModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl bg-paper border border-border rounded-2xl p-5 shadow-2xl space-y-4 animate-scale-in"
+          >
+            {/* 顶端搜索输入框 */}
+            <div className="relative flex items-center bg-surface border border-border rounded-xl px-3.5 py-2.5 shadow-xs focus-within:border-stone-400 transition-colors">
+              <Search className="w-4 h-4 text-ink-400 mr-2.5 shrink-0 pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                autoFocus
+                value={searchModalQuery}
+                onChange={(e) => setSearchModalQuery(e.target.value)}
+                placeholder="搜索对话内容..."
+                className="w-full bg-transparent text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none"
+              />
+              {searchModalQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchModalQuery('')}
+                  className="p-1 text-ink-400 hover:text-ink-900 rounded-md cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <span className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">
+                  ESC 关闭
+                </span>
+              )}
+            </div>
+
+            {/* 对话结果清单列表 */}
+            <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
+              <div className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider px-2 pt-1">
+                {searchModalQuery ? `搜索结果 (${modalFilteredSessions.length})` : '近期对话'}
+              </div>
+
+              {modalFilteredSessions.length === 0 ? (
+                <div className="py-12 text-center text-xs text-ink-400 font-serif italic">
+                  未找到与 “{searchModalQuery}” 相关的对话记录
+                </div>
+              ) : (
+                modalFilteredSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    onClick={() => {
+                      onSelectSession(session.id);
+                      setIsSearchModalOpen(false);
+                    }}
+                    className={`px-3 py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between text-xs group ${
+                      session.id === activeSessionId
+                        ? 'bg-surface border border-border text-ink-900 font-semibold shadow-xs'
+                        : 'hover:bg-subtle text-ink-800 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 truncate flex-1 min-w-0 pr-2">
+                      <MessageSquare className="w-4 h-4 text-ink-400 group-hover:text-ink-900 shrink-0" />
+                      <span className="truncate">{session.title}</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-ink-400 shrink-0">
+                      {formatFriendlyDate(session.updated_at)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1. 居中新建知识库卡片（含内置文档上传区） */}
       {isCreateKBModalOpen && (
@@ -948,7 +1047,7 @@ const SessionItem: React.FC<SessionItemProps> = ({
   return (
     <div
       onClick={onSelect}
-      className={`px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center justify-between group text-xs font-medium ${
+      className={`px-3 py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between group text-xs font-medium ${
         isActive
           ? 'bg-surface border border-border text-ink-900 font-semibold shadow-card'
           : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'

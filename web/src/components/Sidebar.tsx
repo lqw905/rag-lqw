@@ -345,23 +345,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div>
               <div
                 onClick={handleToggleKBList}
-                className={`w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-xs font-medium cursor-pointer transition-all ${
+                className={`w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-xs font-medium cursor-pointer transition-all group ${
                   !isKBListCollapsed 
                     ? 'bg-surface border border-border text-ink-900 shadow-card' 
                     : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                  <Database className="w-4 h-4 text-ink-500 shrink-0" />
+                  <Database className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
                   <span className="truncate">知识库</span>
                   {selectedKB && (
-                    <span className="inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium truncate shadow-xs">
+                    <span className={`inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium truncate shadow-xs transition-opacity duration-150 ${
+                      !isKBListCollapsed ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
                       <span className="truncate max-w-[80px]">{selectedKB}</span>
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className={`flex items-center gap-1 shrink-0 transition-opacity duration-150 ${
+                  !isKBListCollapsed ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}>
                   <button
                     type="button"
                     onClick={(e) => {

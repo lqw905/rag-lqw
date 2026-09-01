@@ -4,13 +4,11 @@ import { BookOpen, PanelLeft } from 'lucide-react';
 interface HeaderProps {
   isSidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
-  selectedKB?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   isSidebarCollapsed = false,
-  onToggleSidebar,
-  selectedKB
+  onToggleSidebar
 }) => {
   return (
     <header className="h-12 border-b border-border bg-paper/80 backdrop-blur-md px-4 flex items-center justify-between sticky top-0 z-30 relative select-none">
@@ -21,12 +19,6 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
-          {selectedKB && (
-            <>
-              <span className="text-ink-300 text-xs">/</span>
-              <span className="text-xs text-ink-500 font-medium font-mono">{selectedKB}</span>
-            </>
-          )}
         </div>
 
         {onToggleSidebar && (

@@ -350,7 +350,6 @@ export const App: React.FC = () => {
       <Header
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}
-        selectedKB={selectedKB}
       />
 
       {/* 主体两栏布局 (单侧边栏 + 对话主内容区 + 侧滑抽屉) */}

@@ -10,8 +10,7 @@ import {
   Edit3,
   Search,
   X,
-  ChevronDown,
-  ChevronRight
+  ChevronDown
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -58,12 +57,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [newKBName, setNewKBName] = useState('');
   const [newKBDesc, setNewKBDesc] = useState('');
 
-  // KB List Collapsible State
+  // KB List Collapsible State (默认收起)
   const [isKBListCollapsed, setIsKBListCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('rag_kblist_collapsed') === 'true';
+      const saved = localStorage.getItem('rag_kblist_collapsed');
+      return saved !== null ? saved === 'true' : true;
     } catch {
-      return false;
+      return true;
     }
   });
 
@@ -296,20 +296,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleKBList}
-                  className="flex items-center gap-1.5 hover:text-ink-900 transition-colors cursor-pointer group text-left"
+                  className="flex items-center gap-1.5 hover:text-ink-900 transition-colors cursor-pointer group text-left max-w-[calc(100%-4rem)] truncate"
                   title={isKBListCollapsed ? '点击展开完整知识库列表' : '点击收起知识库列表'}
                 >
-                  <ChevronDown className={`w-3.5 h-3.5 text-ink-400 group-hover:text-ink-900 transition-transform duration-200 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
-                  <Database className="w-3.5 h-3.5 text-ink-700" />
-                  <span className="font-semibold text-ink-700">知识库</span>
-                  <span className="text-[10px] font-mono font-normal text-ink-400">({knowledgeBases.length})</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-ink-400 group-hover:text-ink-900 transition-transform duration-200 shrink-0 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
+                  <Database className="w-3.5 h-3.5 text-ink-700 shrink-0" />
+                  <span className="font-semibold text-ink-700 shrink-0">知识库</span>
+                  
+                  {/* 收起状态下，直接在文字旁边展示当前使用的知识库 Tag 胶囊 */}
+                  {isKBListCollapsed && selectedKB ? (
+                    <span className="inline-flex items-center gap-1 bg-surface text-ink-900 border border-border px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium truncate shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0 animate-pulse-subtle" />
+                      <span className="truncate max-w-[90px]">{selectedKB}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono font-normal text-ink-400">({knowledgeBases.length})</span>
+                  )}
                 </button>
                 <button 
                   onClick={() => {
                     if (isKBListCollapsed) setIsKBListCollapsed(false);
                     setIsCreatingKB(!isCreatingKB);
                   }}
-                  className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer"
+                  className="text-ink-700 hover:text-ink-900 font-semibold transition-all flex items-center gap-1 p-1 rounded hover:bg-subtle cursor-pointer shrink-0"
                   title="新建知识库"
                 >
                   <Plus className={`w-3.5 h-3.5 transition-transform ${isCreatingKB ? 'rotate-45' : ''}`} />
@@ -354,33 +363,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </form>
               )}
 
-              {/* 折叠收起态：展示当前使用的知识库摘要卡片 */}
-              {isKBListCollapsed ? (
-                <div
-                  onClick={() => setIsKBListCollapsed(false)}
-                  className="bg-surface border border-border rounded-xl px-2.5 py-2 shadow-card flex items-center justify-between cursor-pointer hover:border-stone-400 transition-all group animate-fade-in"
-                  title="点击展开完整知识库列表"
-                >
-                  <div className="flex items-center space-x-2 truncate flex-1 min-w-0 pr-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 flex-shrink-0 animate-pulse-subtle" />
-                    <div className="flex items-center gap-1.5 truncate">
-                      <span className="text-[10px] text-ink-400 font-mono">当前:</span>
-                      <span className="text-xs font-semibold text-ink-900 truncate">
-                        {selectedKB || '未选择知识库'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {knowledgeBases.find((k) => k.kb_name === selectedKB) && (
-                      <span className="text-[10px] font-mono text-ink-500 bg-subtle px-1.5 py-0.5 rounded border border-border/80">
-                        {knowledgeBases.find((k) => k.kb_name === selectedKB)?.chunk_count} 切片
-                      </span>
-                    )}
-                    <ChevronRight className="w-3.5 h-3.5 text-ink-400 group-hover:text-ink-700 group-hover:translate-x-0.5 transition-all" />
-                  </div>
-                </div>
-              ) : (
-                /* 展开态：展示全部知识库直列项 */
+              {/* 仅在展开态展示全部知识库直列项 */}
+              {!isKBListCollapsed && (
                 <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5 animate-fade-in">
                   {knowledgeBases.length === 0 ? (
                     <div 

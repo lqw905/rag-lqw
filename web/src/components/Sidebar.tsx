@@ -14,7 +14,9 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Check
+  Check,
+  BookOpen,
+  PanelLeft
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -308,12 +310,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
           borderRightWidth: isCollapsed ? 0 : '1px',
           opacity: isCollapsed ? 0 : 1
         }}
-        className={`relative bg-paper border-border flex-shrink-0 z-20 h-[calc(100vh-3rem)] overflow-hidden ${
+        className={`relative bg-paper border-border flex-shrink-0 z-20 h-screen overflow-hidden ${
           isResizing ? 'select-none' : 'transition-[width,opacity] duration-300 ease-in-out'
         }`}
       >
         <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
+          {/* 侧边栏顶端：品牌 Logo 与折叠按钮 (h-11) */}
+          <div className="h-11 px-3 flex items-center justify-between border-b border-border/80 flex-shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-ink-900 flex items-center justify-center text-white shadow-xs">
+                <BookOpen className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
+            </div>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="p-1 rounded-md text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
+                title="收起侧边栏 (Ctrl+B)"
+              >
+                <PanelLeft className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           {/* 顶部主指令列表（4 大统一、等高、无内嵌折叠的标准单行条目） */}
           <div className="p-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
             

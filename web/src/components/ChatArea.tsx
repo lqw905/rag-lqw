@@ -6,12 +6,12 @@ import {
   Trash2, 
   BookOpen, 
   CornerDownLeft,
-  Edit3,
   Download,
   CheckCircle2,
   ChevronRight,
   ArrowUpRight,
-  StopCircle
+  StopCircle,
+  PanelLeft
 } from 'lucide-react';
 import type { ChatMessage, ReferenceItem, ChunkDetail } from '../types';
 import { api } from '../services/api';
@@ -25,7 +25,8 @@ interface ChatAreaProps {
   onStopGeneration: () => void;
   onClearMessages: () => void;
   onOpenCitation: (refId: number, references?: ReferenceItem[]) => void;
-  onRenameSession?: (newTitle: string) => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -37,18 +38,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onStopGeneration,
   onClearMessages,
   onOpenCitation,
-  onRenameSession,
+  isSidebarCollapsed = false,
+  onToggleSidebar,
 }) => {
   const [input, setInput] = useState('');
-
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editTitleVal, setEditTitleVal] = useState(sessionTitle);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setEditTitleVal(sessionTitle);
-  }, [sessionTitle]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,14 +61,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       e.preventDefault();
       handleSubmit(e);
     }
-  };
-
-
-  const handleSaveTitle = () => {
-    if (editTitleVal.trim() && onRenameSession) {
-      onRenameSession(editTitleVal.trim());
-    }
-    setIsEditingTitle(false);
   };
 
   const handleExportMarkdown = () => {
@@ -273,69 +260,43 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const sampleQuestions = dynamicQuestions;
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3rem)] bg-paper overflow-hidden relative">
-      {/* 顶部会话标题与工具栏 */}
-      <div className="h-12 border-b border-border px-6 flex items-center justify-between bg-paper/90 backdrop-blur-md flex-shrink-0 text-xs z-10 select-none">
-        <div className="flex items-center gap-2.5 truncate max-w-xl">
-          {isEditingTitle ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={editTitleVal}
-                onChange={(e) => setEditTitleVal(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveTitle();
-                  if (e.key === 'Escape') setIsEditingTitle(false);
-                }}
-                autoFocus
-                className="bg-surface border border-stone-400 text-ink-900 rounded px-2 py-1 text-xs focus:outline-none"
-              />
-              <button onClick={handleSaveTitle} className="text-ink-900 font-semibold text-xs">
-                保存
-              </button>
-            </div>
-          ) : (
-            <div
-              onClick={() => setIsEditingTitle(true)}
-              className="flex items-center gap-1.5 cursor-pointer group truncate"
-              title="点击编辑会话标题"
-            >
-              <span className="font-semibold text-ink-900 truncate max-w-md group-hover:text-stone-600 transition-colors">
-                {sessionTitle || '研读对话'}
-              </span>
-              <Edit3 className="w-3.5 h-3.5 text-ink-400 group-hover:text-ink-900 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0" />
-            </div>
-          )}
-          <span className="text-[11px] px-2 py-0.5 rounded-md bg-subtle text-ink-700 border border-border font-mono flex-shrink-0">
-            {selectedKB || '未选择知识库'}
-          </span>
-        </div>
+    <div className="flex-1 flex flex-col h-screen bg-paper overflow-hidden relative">
+      {/* 展开侧边栏浮动入口（当侧边栏收起时显示） */}
+      {isSidebarCollapsed && onToggleSidebar && (
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="absolute top-3.5 left-3.5 z-30 p-1.5 rounded-lg bg-surface/90 hover:bg-surface text-ink-600 hover:text-ink-900 border border-border shadow-xs backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1.5 text-xs"
+          title="展开侧边栏 (Ctrl+B)"
+        >
+          <PanelLeft className="w-3.5 h-3.5" />
+          <span className="text-[11px] font-medium hidden sm:inline">展开侧栏</span>
+        </button>
+      )}
 
-        <div className="flex items-center gap-2">
-          {messages.length > 0 && (
-            <>
-              <button
-                onClick={handleExportMarkdown}
-                className="flex items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors px-2.5 py-1 rounded-lg hover:bg-subtle"
-                title="导出为 Markdown 报告"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">导出研读报告</span>
-              </button>
-              <button
-                onClick={onClearMessages}
-                disabled={isStreaming}
-                className="flex items-center gap-1 text-ink-500 hover:text-rose-600 transition-colors px-2.5 py-1 rounded-lg hover:bg-rose-50"
-                title="清空当前会话消息"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">清空上下文</span>
-              </button>
-            </>
-          )}
+      {/* 顶部轻量浮动操作胶囊（存在会话消息时浮现） */}
+      {messages.length > 0 && (
+        <div className="absolute top-3.5 right-4 z-20 flex items-center gap-1.5 bg-paper/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-xs animate-fade-in">
+          <button
+            type="button"
+            onClick={handleExportMarkdown}
+            className="flex items-center gap-1 text-ink-500 hover:text-ink-900 transition-colors px-2 py-1 rounded-lg hover:bg-subtle text-xs cursor-pointer"
+            title="导出为 Markdown 报告"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-[11px]">导出报告</span>
+          </button>
+          <button
+            type="button"
+            onClick={onClearMessages}
+            disabled={isStreaming}
+            className="flex items-center gap-1 text-ink-500 hover:text-rose-600 transition-colors px-2 py-1 rounded-lg hover:bg-rose-50 text-xs cursor-pointer disabled:opacity-40"
+            title="清空当前会话上下文"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
-      </div>
+      )}
 
       {/* 消息滚动主区域 (Editorial Document Flow) */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8">

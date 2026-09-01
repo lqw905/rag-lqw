@@ -69,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [editingTitle, setEditingTitle] = useState('');
 
   // Drag Resizing State
+  const [isResizing, setIsResizing] = useState(false);
   const isResizingRef = useRef(false);
 
   const currentKB = knowledgeBases.find((k) => k.kb_name === selectedKB);
@@ -93,20 +94,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
+    setIsResizing(true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
 
+    let lastWidth = width;
+
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (!isResizingRef.current || !onWidthChange) return;
-      onWidthChange(moveEvent.clientX);
+      lastWidth = moveEvent.clientX;
+      onWidthChange(lastWidth);
     };
 
     const onMouseUp = () => {
       isResizingRef.current = false;
+      setIsResizing(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+
+      try {
+        const clamped = Math.max(220, Math.min(480, lastWidth));
+        localStorage.setItem('rag_sidebar_width', String(clamped));
+      } catch (err) {
+        console.error(err);
+      }
     };
 
     window.addEventListener('mousemove', onMouseMove);
@@ -236,9 +249,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           borderRightWidth: isCollapsed ? 0 : '1px',
           opacity: isCollapsed ? 0 : 1
         }}
-        className="relative bg-paper border-border flex-shrink-0 z-20 h-[calc(100vh-3rem)] transition-all duration-300 ease-in-out overflow-hidden"
+        className={`relative bg-paper border-border flex-shrink-0 z-20 h-[calc(100vh-3rem)] overflow-hidden ${
+          isResizing ? 'select-none' : 'transition-[width,opacity] duration-300 ease-in-out'
+        }`}
       >
-        <div style={{ width: `${width}px` }} className="flex flex-col justify-between h-full">
+        <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
         {/* 顶部区域：新建对话与知识库卡片 */}
         <div className="p-4 space-y-4">
@@ -387,13 +402,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* 侧边隐形极细调节把手 (Delicate Hairline Resizer) */}
-        {onWidthChange && (
+        {onWidthChange && !isCollapsed && (
           <div
             onMouseDown={handleMouseDown}
             className="absolute -right-[3px] top-0 bottom-0 w-[6px] cursor-col-resize z-30 group"
             title="左右拖拽调节侧边栏宽度"
           >
-            <div className="w-[1.5px] h-full mx-auto opacity-0 group-hover:opacity-100 group-active:opacity-100 bg-stone-400/60 transition-opacity duration-150" />
+            <div
+              className={`w-[2px] h-full mx-auto transition-colors duration-150 ${
+                isResizing
+                  ? 'bg-stone-500 opacity-100'
+                  : 'bg-stone-400/60 opacity-0 group-hover:opacity-100'
+              }`}
+            />
           </div>
         )}
       </aside>

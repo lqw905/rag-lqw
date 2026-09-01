@@ -50,11 +50,6 @@ export const App: React.FC = () => {
   const handleWidthChange = (newWidth: number) => {
     const clamped = Math.max(220, Math.min(480, newWidth));
     setSidebarWidth(clamped);
-    try {
-      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   // Multi-Session State (Persisted in localStorage)

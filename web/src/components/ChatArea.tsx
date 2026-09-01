@@ -5,8 +5,6 @@ import rehypeHighlight from 'rehype-highlight';
 import { 
   Trash2, 
   BookOpen, 
-  Copy, 
-  Check, 
   CornerDownLeft,
   Edit3,
   Download,
@@ -42,7 +40,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onRenameSession,
 }) => {
   const [input, setInput] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleVal, setEditTitleVal] = useState(sessionTitle);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -70,11 +68,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     }
   };
 
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const handleSaveTitle = () => {
     if (editTitleVal.trim() && onRenameSession) {
@@ -424,32 +417,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         )}
                       </div>
 
-                      {/* 底部动作工具栏 */}
-                      <div className="pt-3.5 border-t border-border flex items-center justify-between text-xs text-ink-500">
-                        <div className="flex items-center space-x-3">
-                          <button
-                            onClick={() => handleCopy(message.id, message.content)}
-                            className="hover:text-ink-900 flex items-center space-x-1 transition-colors"
-                          >
-                            {copiedId === message.id ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                <span className="text-emerald-700">已复制</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>复制回答</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                        {message.isStreaming && (
-                          <span className="font-mono text-[11px] text-ink-500 animate-pulse">
-                            正在生成中...
-                          </span>
-                        )}
-                      </div>
+
 
                     </div>
                   )}

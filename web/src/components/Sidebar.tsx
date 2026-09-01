@@ -32,8 +32,7 @@ interface SidebarProps {
   onRenameSession: (id: string, newTitle: string) => void;
   onDeleteSession: (id: string) => void;
   onClearSessions: () => void;
-  activeTab?: 'chat' | 'playground';
-  onSelectTab?: (tab: 'chat' | 'playground') => void;
+  onOpenPlaygroundModal: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   width?: number;
@@ -53,8 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRenameSession,
   onDeleteSession,
   onClearSessions,
-  activeTab = 'chat',
-  onSelectTab,
+  onOpenPlaygroundModal,
   isCollapsed = false,
   onToggleCollapse,
   width = 288,
@@ -491,10 +489,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* 2. 发起新对话统一条目 (固定 h-9 等高) */}
             <button
               type="button"
-              onClick={() => {
-                onSelectTab?.('chat');
-                onCreateSession();
-              }}
+              onClick={onCreateSession}
               className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
             >
               <div className="flex items-center gap-2.5 truncate">
@@ -520,25 +515,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘F</span>
             </button>
 
-            {/* 4. 检索实验台统一条目 (固定 h-9 等高) */}
+            {/* 4. 检索实验台统一条目 (固定 h-9 等高，点击唤出居中卡片) */}
             <button
               type="button"
-              onClick={() => onSelectTab?.('playground')}
-              className={`h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium transition-all group cursor-pointer text-left ${
-                activeTab === 'playground'
-                  ? 'bg-surface border border-border text-ink-900 font-semibold shadow-xs'
-                  : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'
-              }`}
+              onClick={onOpenPlaygroundModal}
+              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
             >
               <div className="flex items-center gap-2.5 truncate">
-                <SlidersHorizontal className={`w-4 h-4 shrink-0 transition-colors ${
-                  activeTab === 'playground' ? 'text-ink-900' : 'text-ink-500 group-hover:text-ink-900'
-                }`} />
+                <SlidersHorizontal className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
                 <span>检索实验台</span>
               </div>
-              <span className={`text-[10px] font-mono transition-opacity pr-1 ${
-                activeTab === 'playground' ? 'text-ink-600 opacity-100 font-medium' : 'text-ink-400 opacity-0 group-hover:opacity-100'
-              }`}>LAB</span>
+              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">LAB</span>
             </button>
 
           </div>
@@ -576,10 +563,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         isEditing={s.id === editingSessionId}
                         editTitle={editingTitle}
                         setEditTitle={setEditingTitle}
-                        onSelect={() => {
-                          onSelectTab?.('chat');
-                          onSelectSession(s.id);
-                        }}
+                        onSelect={() => onSelectSession(s.id)}
                         onStartRename={(e) => {
                           e.stopPropagation();
                           setEditingSessionId(s.id);
@@ -608,10 +592,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         isEditing={s.id === editingSessionId}
                         editTitle={editingTitle}
                         setEditTitle={setEditingTitle}
-                        onSelect={() => {
-                          onSelectTab?.('chat');
-                          onSelectSession(s.id);
-                        }}
+                        onSelect={() => onSelectSession(s.id)}
                         onStartRename={(e) => {
                           e.stopPropagation();
                           setEditingSessionId(s.id);
@@ -715,7 +696,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div
                     key={session.id}
                     onClick={() => {
-                      onSelectTab?.('chat');
                       onSelectSession(session.id);
                       setIsSearchModalOpen(false);
                     }}

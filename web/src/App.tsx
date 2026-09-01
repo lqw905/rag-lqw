@@ -13,7 +13,7 @@ const SIDEBAR_COLLAPSED_KEY = 'rag_sidebar_collapsed';
 const SIDEBAR_WIDTH_KEY = 'rag_sidebar_width';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'playground'>('chat');
+  const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [selectedKB, setSelectedKB] = useState<string>('');
 
@@ -348,13 +348,12 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-paper text-ink-900 flex flex-col font-sans selection:bg-stone-200 selection:text-ink-900">
       {/* 顶部导航栏 */}
       <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}
+        selectedKB={selectedKB}
       />
 
-      {/* 主体两栏/三栏布局 (单侧边栏 + 主内容区 + 侧滑抽屉) */}
+      {/* 主体两栏布局 (单侧边栏 + 对话主内容区 + 侧滑抽屉) */}
       <div className="flex-1 flex overflow-hidden">
         
         {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 */}
@@ -380,30 +379,25 @@ export const App: React.FC = () => {
           onRenameSession={handleRenameSession}
           onDeleteSession={handleDeleteSession}
           onClearSessions={handleClearSessionsForKB}
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
+          onOpenPlaygroundModal={() => setIsPlaygroundOpen(true)}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleSidebar}
           width={sidebarWidth}
           onWidthChange={handleWidthChange}
         />
 
-        {/* 右侧：主对话交互区 或 检索对比 Playground */}
-        {activeTab === 'chat' ? (
-          <ChatArea
-            messages={activeSession ? activeSession.messages : []}
-            sessionTitle={activeSession ? activeSession.title : ''}
-            selectedKB={selectedKB}
-            isStreaming={isStreaming}
-            onSendMessage={handleSendMessage}
-            onStopGeneration={handleStopGeneration}
-            onClearMessages={handleClearCurrentMessages}
-            onOpenCitation={handleOpenCitation}
-            onRenameSession={(title) => activeSessionId && handleRenameSession(activeSessionId, title)}
-          />
-        ) : (
-          <Playground selectedKB={selectedKB} />
-        )}
+        {/* 右侧：始终专注主对话研读区 */}
+        <ChatArea
+          messages={activeSession ? activeSession.messages : []}
+          sessionTitle={activeSession ? activeSession.title : ''}
+          selectedKB={selectedKB}
+          isStreaming={isStreaming}
+          onSendMessage={handleSendMessage}
+          onStopGeneration={handleStopGeneration}
+          onClearMessages={handleClearCurrentMessages}
+          onOpenCitation={handleOpenCitation}
+          onRenameSession={(title) => activeSessionId && handleRenameSession(activeSessionId, title)}
+        />
 
         {/* 侧边滑出：引用溯源抽屉 */}
         <CitationDrawer
@@ -414,6 +408,13 @@ export const App: React.FC = () => {
           onSelectRef={(id) => setActiveRefId(id)}
         />
       </div>
+
+      {/* 检索实验台居中模态卡片 */}
+      <Playground
+        isOpen={isPlaygroundOpen}
+        onClose={() => setIsPlaygroundOpen(false)}
+        selectedKB={selectedKB}
+      />
 
       {/* 切片透视模态框 */}
       <ChunkModal

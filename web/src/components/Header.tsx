@@ -2,30 +2,31 @@ import React from 'react';
 import { BookOpen, PanelLeft } from 'lucide-react';
 
 interface HeaderProps {
-  activeTab: 'chat' | 'playground';
-  setActiveTab?: (tab: 'chat' | 'playground') => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
+  selectedKB?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  activeTab, 
   isSidebarCollapsed = false,
-  onToggleSidebar
+  onToggleSidebar,
+  selectedKB
 }) => {
   return (
     <header className="h-12 border-b border-border bg-paper/80 backdrop-blur-md px-4 flex items-center justify-between sticky top-0 z-30 relative select-none">
-      {/* Brand Logo, Toggle & Breadcrumb (Left) */}
+      {/* Brand Logo, Toggle & Title (Left) */}
       <div className="flex items-center gap-2.5">
         <div className="w-7 h-7 rounded-lg bg-ink-900 flex items-center justify-center text-white shadow-xs">
           <BookOpen className="w-3.5 h-3.5 text-white" />
         </div>
         <div className="flex items-center gap-2">
           <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
-          <span className="text-ink-300 text-xs">/</span>
-          <span className="text-xs text-ink-500 font-medium">
-            {activeTab === 'playground' ? '检索实验台 (Playground)' : '研读工作台 (Workspace)'}
-          </span>
+          {selectedKB && (
+            <>
+              <span className="text-ink-300 text-xs">/</span>
+              <span className="text-xs text-ink-500 font-medium font-mono">{selectedKB}</span>
+            </>
+          )}
         </div>
 
         {onToggleSidebar && (

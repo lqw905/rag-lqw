@@ -11,10 +11,10 @@ import {
   Search,
   SlidersHorizontal,
   X,
-  ChevronDown,
   FileText,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import type { KnowledgeBase, ChatSession } from '../types';
 import { api } from '../services/api';
@@ -58,6 +58,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   width = 288,
   onWidthChange,
 }) => {
+  // Knowledge Base Hub Modal State (居中卡片式管理中心)
+  const [isKBHubModalOpen, setIsKBHubModalOpen] = useState(false);
+  const [kbFilterQuery, setKbFilterQuery] = useState('');
+
   // Create KB Modal State
   const [isCreateKBModalOpen, setIsCreateKBModalOpen] = useState(false);
   const [newKBName, setNewKBName] = useState('');
@@ -81,29 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // KB List Collapsible State (默认收起)
-  const [isKBListCollapsed, setIsKBListCollapsed] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('rag_kblist_collapsed');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
-
-  const handleToggleKBList = () => {
-    setIsKBListCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('rag_kblist_collapsed', String(next));
-      } catch (err) {
-        console.error(err);
-      }
-      return next;
-    });
-  };
-
-  // Quick drag-and-drop state on sidebar items
+  // Quick drag-and-drop state on hub cards
   const [dragOverKB, setDragOverKB] = useState<string | null>(null);
 
   // Inline Session Rename State
@@ -122,6 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (isKBHubModalOpen) setIsKBHubModalOpen(false);
         if (isSearchModalOpen) setIsSearchModalOpen(false);
         if (isCreateKBModalOpen) setIsCreateKBModalOpen(false);
         if (uploadModalKB) setUploadModalKB(null);
@@ -142,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen, uploadModalKB, isSearchModalOpen]);
+  }, [onCreateSession, onToggleCollapse, isCreateKBModalOpen, uploadModalKB, isSearchModalOpen, isKBHubModalOpen]);
 
   // Handle Drag Resizing
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -203,7 +186,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return sessions.filter((s) => s.title.toLowerCase().includes(q));
   }, [sessions, searchModalQuery]);
 
-
+  // Filtered Knowledge Bases for the Hub modal
+  const filteredKBs = useMemo(() => {
+    if (!kbFilterQuery.trim()) return knowledgeBases;
+    const q = kbFilterQuery.toLowerCase();
+    return knowledgeBases.filter((k) => 
+      k.kb_name.toLowerCase().includes(q) || 
+      (k.description && k.description.toLowerCase().includes(q))
+    );
+  }, [knowledgeBases, kbFilterQuery]);
 
   // Filter supported files helper
   const filterSupportedFiles = (files: FileList | File[]) => {
@@ -323,153 +314,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
-          {/* 顶部主指令列表（严格统一规范与像素级等高：知识库 / 发起新对话 / 搜索对话内容） */}
+          {/* 顶部主指令列表（4 大统一、等高、无内嵌折叠的标准单行条目） */}
           <div className="p-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
             
-            {/* 1. 知识库统一条目 (固定 h-9 等高) */}
-            <div>
-              <div
-                onClick={handleToggleKBList}
-                className={`h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium cursor-pointer transition-all group ${
-                  !isKBListCollapsed 
-                    ? 'bg-surface border border-border text-ink-900 shadow-xs' 
-                    : 'hover:bg-subtle text-ink-700 hover:text-ink-900 border border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                  <Database className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
-                  <span className="truncate">知识库</span>
-                  {selectedKB && (
-                    <span className={`inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 h-5 rounded text-[10px] font-mono font-medium truncate shadow-xs transition-opacity duration-150 ${
-                      !isKBListCollapsed ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                      <span className="truncate max-w-[80px]">{selectedKB}</span>
-                    </span>
-                  )}
-                </div>
-                <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-150 ${
-                  !isKBListCollapsed ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                }`}>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setModalFeedback(null);
-                      setIsCreateKBModalOpen(true);
-                    }}
-                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-ink-400 hover:text-ink-900 transition-colors cursor-pointer"
-                    title="新建知识库"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="w-5 h-5 flex items-center justify-center text-ink-400">
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isKBListCollapsed ? '-rotate-90' : ''}`} />
-                  </div>
-                </div>
+            {/* 1. 知识库统一条目 (固定 h-9 等高，点击唤出居中知识库管理中心卡片) */}
+            <button
+              type="button"
+              onClick={() => {
+                setKbFilterQuery('');
+                setIsKBHubModalOpen(true);
+              }}
+              className="h-9 w-full px-2.5 rounded-lg flex items-center justify-between text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-subtle border border-transparent transition-all group cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
+                <Database className="w-4 h-4 text-ink-500 group-hover:text-ink-900 shrink-0 transition-colors" />
+                <span>知识库</span>
+                {selectedKB && (
+                  <span className="inline-flex items-center gap-1 bg-subtle text-ink-900 border border-border/80 px-1.5 h-5 rounded text-[10px] font-mono font-medium truncate shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                    <span className="truncate max-w-[80px]">{selectedKB}</span>
+                  </span>
+                )}
               </div>
-
-              {/* 展开态：知识库子项列表 */}
-              {!isKBListCollapsed && (
-                <div className="mt-0.5 pl-2 pr-0.5 py-0.5 space-y-0.5 max-h-40 overflow-y-auto animate-fade-in">
-                  {knowledgeBases.length === 0 ? (
-                    <div 
-                      onClick={() => {
-                        setModalFeedback(null);
-                        setIsCreateKBModalOpen(true);
-                      }}
-                      className="h-8 px-2 rounded-lg flex items-center justify-center text-xs text-ink-500 hover:text-ink-900 hover:bg-subtle cursor-pointer transition-colors"
-                    >
-                      + 点击新建首个知识库
-                    </div>
-                  ) : (
-                    knowledgeBases.map((kb) => {
-                      const isSelected = selectedKB === kb.kb_name;
-                      const isDragged = dragOverKB === kb.kb_name;
-                      return (
-                        <div
-                          key={kb.kb_name}
-                          onClick={() => onSelectKB(kb.kb_name)}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setDragOverKB(kb.kb_name);
-                          }}
-                          onDragLeave={() => setDragOverKB(null)}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            setDragOverKB(null);
-                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                              const validFiles = filterSupportedFiles(e.dataTransfer.files);
-                              if (validFiles.length > 0) {
-                                setUploadModalKB(kb.kb_name);
-                                setUploadFiles(validFiles);
-                                setModalFeedback(null);
-                              }
-                            }
-                          }}
-                          className={`group/kb h-8 px-2.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-all ${
-                            isDragged
-                              ? 'border border-emerald-600 bg-emerald-50 text-emerald-900'
-                              : isSelected
-                              ? 'bg-surface border border-border text-ink-900 font-semibold shadow-xs'
-                              : 'hover:bg-subtle text-ink-700 hover:text-ink-900'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-emerald-600' : 'bg-stone-300'}`} />
-                            <span className="truncate">{kb.kb_name}</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span className="text-[10px] font-mono text-ink-400 group-hover/kb:hidden">{kb.chunk_count}</span>
-                            <div className="hidden group-hover/kb:flex items-center gap-0.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectKB(kb.kb_name);
-                                  setUploadModalKB(kb.kb_name);
-                                  setUploadFiles([]);
-                                  setModalFeedback(null);
-                                }}
-                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors cursor-pointer"
-                                title="上传文档至此知识库"
-                              >
-                                <Upload className="w-3 h-3" />
-                              </button>
-                              {kb.chunk_count > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onSelectKB(kb.kb_name);
-                                    onOpenChunkModal();
-                                  }}
-                                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-ink-500 hover:text-ink-900 transition-colors cursor-pointer"
-                                  title="切片透视分析"
-                                >
-                                  <Layers className="w-3 h-3" />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteKB(kb.kb_name);
-                                }}
-                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="删除知识库"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
+              <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">HUB</span>
+            </button>
 
             {/* 2. 发起新对话统一条目 (固定 h-9 等高) */}
             <button
@@ -484,7 +352,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] font-mono text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1">⌘K</span>
             </button>
 
-            {/* 3. 搜索对话内容统一条目 (固定 h-9 等高) */}
+            {/* 3. 搜索对话内容统一条目 (固定 h-9 等高，点击唤出居中搜索页面) */}
             <button
               type="button"
               onClick={() => {
@@ -515,7 +383,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           </div>
 
-          {/* 中部：历史对话列表（统一单行条目规范） */}
+          {/* 中部：历史对话列表（纯净平铺连续条目） */}
           <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 min-h-0">
             <div className="flex items-center justify-between px-1">
               <span className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">
@@ -596,6 +464,208 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </aside>
 
+      {/* 📚 知识库管理中心模态卡片（Spotlight 风格） */}
+      {isKBHubModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+          onClick={() => setIsKBHubModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl max-h-[76vh] bg-paper border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in"
+          >
+            {/* 卡片头部 */}
+            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between flex-shrink-0 bg-surface/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-emerald-600 shadow-xs">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-ink-900">私域知识库管理中心 (Knowledge Hub)</h3>
+                  <p className="text-[11px] text-ink-500">管理混合索引知识库、快速切换当前活跃库与追加导入文档</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setModalFeedback(null);
+                    setIsCreateKBModalOpen(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-ink-900 hover:bg-accent-hover text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>新建知识库</span>
+                </button>
+                <button
+                  onClick={() => setIsKBHubModalOpen(false)}
+                  className="p-1.5 rounded-lg text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
+                  title="关闭 (ESC)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* 搜索/过滤栏 */}
+            <div className="p-3 border-b border-border/80 bg-paper">
+              <div className="relative flex items-center bg-surface border border-border rounded-xl px-3 py-1.5 focus-within:border-stone-400 transition-colors shadow-xs">
+                <Search className="w-3.5 h-3.5 text-ink-400 mr-2 shrink-0 pointer-events-none" />
+                <input
+                  type="text"
+                  value={kbFilterQuery}
+                  onChange={(e) => setKbFilterQuery(e.target.value)}
+                  placeholder="搜索知识库名称或描述..."
+                  className="w-full bg-transparent text-xs text-ink-900 placeholder:text-ink-400 focus:outline-none"
+                />
+                {kbFilterQuery && (
+                  <button
+                    onClick={() => setKbFilterQuery('')}
+                    className="text-ink-400 hover:text-ink-900 p-0.5 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 知识库卡片列表 */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              {filteredKBs.length === 0 ? (
+                <div className="py-12 text-center text-xs text-ink-400 font-serif italic space-y-2">
+                  <p>{kbFilterQuery ? `未找到与 “${kbFilterQuery}” 匹配的知识库` : '暂无知识库'}</p>
+                  <button
+                    onClick={() => {
+                      setModalFeedback(null);
+                      setIsCreateKBModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-surface border border-border text-ink-800 hover:bg-subtle text-xs font-semibold cursor-pointer"
+                  >
+                    + 点击创建首个私域知识库
+                  </button>
+                </div>
+              ) : (
+                filteredKBs.map((kb) => {
+                  const isSelected = selectedKB === kb.kb_name;
+                  const isDragged = dragOverKB === kb.kb_name;
+
+                  return (
+                    <div
+                      key={kb.kb_name}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOverKB(kb.kb_name);
+                      }}
+                      onDragLeave={() => setDragOverKB(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOverKB(null);
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                          const validFiles = filterSupportedFiles(e.dataTransfer.files);
+                          if (validFiles.length > 0) {
+                            setUploadModalKB(kb.kb_name);
+                            setUploadFiles(validFiles);
+                            setModalFeedback(null);
+                          }
+                        }
+                      }}
+                      className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-4 ${
+                        isDragged
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                          : isSelected
+                          ? 'bg-surface border-border shadow-xs ring-1 ring-emerald-600/30'
+                          : 'bg-surface/50 border-border hover:border-stone-400 hover:bg-surface'
+                      }`}
+                    >
+                      {/* 左侧：活跃状态 & 基础信息 */}
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectKB(kb.kb_name);
+                          }}
+                          className={`mt-0.5 px-2 py-0.5 rounded-md text-[10px] font-semibold font-mono flex items-center gap-1 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                              : 'bg-paper text-ink-600 hover:text-ink-900 border border-border hover:border-stone-400'
+                          }`}
+                          title={isSelected ? '当前正在使用的知识库' : '点击切换至此知识库'}
+                        >
+                          {isSelected ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span>当前使用</span>
+                            </>
+                          ) : (
+                            <span>切换使用</span>
+                          )}
+                        </button>
+
+                        <div className="space-y-0.5 truncate">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-xs text-ink-900 font-mono">{kb.kb_name}</span>
+                          </div>
+                          <p className="text-[11px] text-ink-500 truncate">
+                            {kb.description || '暂无描述信息'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 右侧：切片指标与快捷操作 */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] font-mono text-ink-600 bg-paper px-2 py-1 rounded-lg border border-border">
+                          {kb.chunk_count} 个切片
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectKB(kb.kb_name);
+                              setUploadModalKB(kb.kb_name);
+                              setUploadFiles([]);
+                              setModalFeedback(null);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-paper hover:bg-subtle text-ink-700 hover:text-ink-900 border border-border text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                            title="上传文档至此知识库"
+                          >
+                            <Upload className="w-3 h-3" />
+                            <span>上传</span>
+                          </button>
+
+                          {kb.chunk_count > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSelectKB(kb.kb_name);
+                                onOpenChunkModal();
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-paper hover:bg-subtle text-ink-700 hover:text-ink-900 border border-border text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              title="切片透视分析"
+                            >
+                              <Layers className="w-3 h-3" />
+                              <span>透视</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteKB(kb.kb_name)}
+                            className="p-1.5 rounded-lg hover:bg-rose-100 text-ink-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="删除知识库"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 🔍 全局居中搜索对话页面（Spotlight / Command Palette 风格） */}
       {isSearchModalOpen && (
         <div 
@@ -675,7 +745,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 1. 居中新建知识库卡片（含内置文档上传区） */}
       {isCreateKBModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
           onClick={() => {
             if (!isSubmitting) setIsCreateKBModalOpen(false);
           }}
@@ -849,7 +919,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 2. 居中上传文档卡片（向已有知识库追加导入文档） */}
       {uploadModalKB && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 p-4 bg-ink-900/40 backdrop-blur-xs animate-fade-in"
           onClick={() => {
             if (!isSubmitting) setUploadModalKB(null);
           }}
@@ -956,7 +1026,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
                   modalFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
                 }`}>
-                  {modalFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                  {modalFeedback.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
                   <span>{modalFeedback.text}</span>
                 </div>
               )}

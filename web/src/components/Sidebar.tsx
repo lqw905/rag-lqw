@@ -384,7 +384,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* 展开态：知识库子项列表 */}
               {!isKBListCollapsed && (
-                <div className="mt-0.5 pl-3 pr-1 py-0.5 space-y-0.5 max-h-40 overflow-y-auto animate-fade-in border-l-2 border-border ml-2.5">
+                <div className="mt-0.5 pl-2 pr-0.5 py-0.5 space-y-0.5 max-h-40 overflow-y-auto animate-fade-in">
                   {knowledgeBases.length === 0 ? (
                     <div 
                       onClick={() => {

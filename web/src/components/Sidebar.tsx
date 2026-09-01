@@ -316,28 +316,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div style={{ width: isCollapsed ? `${width}px` : '100%' }} className="flex flex-col justify-between h-full">
         
-          {/* 侧边栏顶端：品牌 Logo 与折叠按钮 (h-11) */}
-          <div className="h-11 px-3 flex items-center justify-between border-b border-border/80 flex-shrink-0 select-none">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-ink-900 flex items-center justify-center text-white shadow-xs">
-                <BookOpen className="w-3.5 h-3.5 text-white" />
+          {/* 顶部主指令与品牌区（无缝收紧，无中间分割线） */}
+          <div className="p-2.5 pt-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
+            
+            {/* 侧边栏顶端：品牌 Logo 与折叠按钮 (h-9 等高，紧凑排布) */}
+            <div className="h-9 px-2.5 flex items-center justify-between select-none">
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-md bg-ink-900 flex items-center justify-center text-white shadow-xs">
+                  <BookOpen className="w-3 h-3 text-white" />
+                </div>
+                <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
               </div>
-              <span className="font-semibold text-xs text-ink-900 tracking-tight">RAG Studio</span>
+              {onToggleCollapse && (
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="p-1 rounded-md text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
+                  title="收起侧边栏 (Ctrl+B)"
+                >
+                  <PanelLeft className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            {onToggleCollapse && (
-              <button
-                type="button"
-                onClick={onToggleCollapse}
-                className="p-1 rounded-md text-ink-400 hover:text-ink-900 hover:bg-subtle transition-colors cursor-pointer"
-                title="收起侧边栏 (Ctrl+B)"
-              >
-                <PanelLeft className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* 顶部主指令列表（4 大统一、等高、无内嵌折叠的标准单行条目） */}
-          <div className="p-2.5 space-y-0.5 flex-shrink-0 border-b border-border/80">
             
             {/* 1. 知识库统一条目 (固定 h-9 等高，点击唤出居中知识库管理中心卡片) */}
             <button

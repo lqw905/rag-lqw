@@ -119,13 +119,33 @@ def main():
         zoomable=True
     )
 
+    def set_white_titlebar():
+        """通过 Windows DWM API 将原生窗口标题栏定制为纯白高雅风格，深灰色文字"""
+        try:
+            import ctypes
+            from ctypes import byref, c_int, sizeof
+
+            hwnd = int(window.native.Handle.ToInt32())
+            dwmapi = ctypes.WinDLL("dwmapi.dll")
+
+            # 1. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
+            dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(0)), sizeof(c_int))
+            # 2. 标题栏背景设为纯白 (DWMWA_CAPTION_COLOR = 35, 0x00FFFFFF)
+            dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x00FFFFFF)), sizeof(c_int))
+            # 3. 标题栏文字设为深灰 (DWMWA_TEXT_COLOR = 36, 0x001F2937)
+            dwmapi.DwmSetWindowAttribute(hwnd, 36, byref(c_int(0x001F2937)), sizeof(c_int))
+        except Exception as e:
+            print(f"[!] 设置白色标题栏失败: {e}")
+
+    window.events.shown += set_white_titlebar
+
     # 4. 阻塞运行原生窗口（用户关闭窗口后自动唤醒退出）
     try:
         webview.start(debug=True)
     finally:
-
         print("\n[*] 检测到窗口已关闭，正在安全退出后端服务...")
         server_thread.stop()
+
 
 if __name__ == "__main__":
     main()

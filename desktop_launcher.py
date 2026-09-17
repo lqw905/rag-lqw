@@ -120,24 +120,44 @@ def main():
     )
 
     def set_white_titlebar():
-        """通过 Windows DWM API 将原生窗口标题栏定制为纯白高雅风格，深灰色文字"""
+        """通过 Windows DWM & Win32 API 定制原生窗口：纯白高雅标题栏、隐藏左上角默认小图标"""
         try:
             import ctypes
             from ctypes import byref, c_int, sizeof
 
             hwnd = int(window.native.Handle.ToInt32())
+            user32 = ctypes.WinDLL("user32.dll")
             dwmapi = ctypes.WinDLL("dwmapi.dll")
 
-            # 1. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
+            # 1. 隐藏标题栏左侧默认小图标
+            try:
+                if hasattr(window.native, "ShowIcon"):
+                    window.native.ShowIcon = False
+            except Exception:
+                pass
+
+            # 移除窗口图标句柄 (WM_SETICON = 0x0080, ICON_SMALL = 0, ICON_BIG = 1)
+            user32.SendMessageW(hwnd, 0x0080, 0, 0)
+            user32.SendMessageW(hwnd, 0x0080, 1, 0)
+
+            # 设置扩展样式隐藏图标 (WS_EX_DLGMODALFRAME = 0x00000001, GWL_EXSTYLE = -20)
+            ex_style = user32.GetWindowLongW(hwnd, -20)
+            user32.SetWindowLongW(hwnd, -20, ex_style | 0x00000001)
+
+            # 刷新窗口外边框以生效 (SWP_FRAMECHANGED = 0x0020, SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004)
+            user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004)
+
+            # 2. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
             dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(0)), sizeof(c_int))
-            # 2. 标题栏背景设为纯白 (DWMWA_CAPTION_COLOR = 35, 0x00FFFFFF)
+            # 3. 标题栏背景设为纯白 (DWMWA_CAPTION_COLOR = 35, 0x00FFFFFF)
             dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x00FFFFFF)), sizeof(c_int))
-            # 3. 标题栏文字设为深灰 (DWMWA_TEXT_COLOR = 36, 0x001F2937)
+            # 4. 标题栏文字设为深灰 (DWMWA_TEXT_COLOR = 36, 0x001F2937)
             dwmapi.DwmSetWindowAttribute(hwnd, 36, byref(c_int(0x001F2937)), sizeof(c_int))
         except Exception as e:
-            print(f"[!] 设置白色标题栏失败: {e}")
+            print(f"[!] 设置标题栏样式失败: {e}")
 
     window.events.shown += set_white_titlebar
+
 
     # 4. 阻塞运行原生窗口（用户关闭窗口后自动唤醒退出）
     try:

@@ -110,6 +110,36 @@ class ServerThread(threading.Thread):
     def stop(self):
         self.server.should_exit = True
 
+def ensure_transparent_icon() -> str:
+    """获取或生成 16x16 纯透明 ico 图标，彻底消除标题栏左侧默认小图标"""
+    candidates = [
+        APP_DIR / "transparent.ico",
+        BUNDLE_DIR / "transparent.ico",
+        APP_DIR / "packaging" / "transparent.ico",
+        BUNDLE_DIR / "packaging" / "transparent.ico",
+    ]
+    for c in candidates:
+        if c and c.exists():
+            return str(c.resolve())
+
+    target = APP_DIR / "transparent.ico"
+    try:
+        import clr
+        clr.AddReference("System.Drawing")
+        import System.Drawing
+        from System.IO import FileStream, FileMode
+
+        bmp = System.Drawing.Bitmap(16, 16)
+        h_icon = bmp.GetHicon()
+        icon = System.Drawing.Icon.FromHandle(h_icon)
+        fs = FileStream(str(target), FileMode.Create)
+        icon.Save(fs)
+        fs.Close()
+        return str(target.resolve())
+    except Exception as e:
+        print(f"[!] 生成透明图标失败: {e}")
+        return ""
+
 def main():
     init_environment()
 
@@ -136,7 +166,10 @@ def main():
     # 2. 主动轮询等待后端服务就绪（通常仅需 0.4~0.8 秒，最长保障等待 10 秒）
     wait_for_server_ready(server_url, timeout=10.0)
 
-    # 3. 创建原生独立窗口（无浏览器边框/地址栏，完全独立的原生窗口）
+    # 3. 获取纯透明图标，从根源消除标题栏默认图标
+    icon_path = ensure_transparent_icon()
+
+    # 4. 创建原生独立窗口（无浏览器边框/地址栏，完全独立的原生窗口）
     window = webview.create_window(
         title="RAG-GK 知识库问答系统",
         url=server_url,
@@ -148,7 +181,7 @@ def main():
     )
 
     def set_white_titlebar():
-        """通过 Windows DWM & Win32 API 定制原生窗口：纯白高雅标题栏、清除标题栏默认图标"""
+        """通过 Windows DWM & Win32 API 定制原生窗口：纯白高雅标题栏、彻底去除系统主题蓝色外边框"""
         try:
             import ctypes
             from ctypes import byref, c_int, sizeof
@@ -157,7 +190,7 @@ def main():
             user32 = ctypes.WinDLL("user32.dll")
             dwmapi = ctypes.WinDLL("dwmapi.dll")
 
-            # 1. 安全移除窗口图标句柄 (WM_SETICON = 0x0080，置 NULL 避免触发重绘死锁)
+            # 1. 安全清除 Win32 图标句柄 (WM_SETICON = 0x0080，双重保险)
             user32.SendMessageW(hwnd, 0x0080, 0, 0)
             user32.SendMessageW(hwnd, 0x0080, 1, 0)
 
@@ -167,12 +200,14 @@ def main():
             dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x00FFFFFF)), sizeof(c_int))
             # 4. 标题栏文字设为深灰 (DWMWA_TEXT_COLOR = 36, 0x001F2937)
             dwmapi.DwmSetWindowAttribute(hwnd, 36, byref(c_int(0x001F2937)), sizeof(c_int))
+            # 5. 彻底消除 Windows 11 系统蓝色外边框！将外边框强制设为纯白 (DWMWA_BORDER_COLOR = 34, 0x00FFFFFF)
+            dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0x00FFFFFF)), sizeof(c_int))
         except Exception as e:
-            print(f"[!] 设置标题栏样式失败: {e}")
+            print(f"[!] 设置标题栏与边框样式失败: {e}")
 
     window.events.shown += set_white_titlebar
 
-    # 4. 监听窗口关闭事件：强制瞬间彻底退出进程，绝不留僵尸后台
+    # 5. 监听窗口关闭事件：强制瞬间彻底退出进程，绝不留僵尸后台
     def on_window_closed():
         try:
             server_thread.stop()
@@ -182,9 +217,12 @@ def main():
 
     window.events.closed += on_window_closed
 
-    # 5. 阻塞运行原生窗口
+    # 6. 阻塞运行原生窗口（传入透明图标彻底覆盖默认图标）
     try:
-        webview.start(debug=False)
+        if icon_path and os.path.exists(icon_path):
+            webview.start(icon=icon_path, debug=False)
+        else:
+            webview.start(debug=False)
     finally:
         os._exit(0)
 

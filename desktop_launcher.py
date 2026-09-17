@@ -12,24 +12,6 @@ from pathlib import Path
 import uvicorn
 import webview
 
-# 避免在无控制台（GUI模式/console=False）下 sys.stdout/sys.stderr 为 None 导致抛出异常
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, "w", encoding="utf-8")
-elif hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w", encoding="utf-8")
-elif hasattr(sys.stderr, "reconfigure"):
-    try:
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
-
 # 确定运行根目录
 if getattr(sys, "frozen", False):
     APP_DIR = Path(sys.executable).parent.resolve()
@@ -40,6 +22,33 @@ else:
 
 # 将工作目录切换到安装/程序所在目录，确保相对路径读写正确（如 ./data/）
 os.chdir(APP_DIR)
+
+# 确保在无控制台（GUI模式/console=False）下将日志写入本地 logs/app.log 供排查
+log_dir = APP_DIR / "logs"
+log_dir.mkdir(exist_ok=True)
+try:
+    log_file = open(log_dir / "app.log", "a", encoding="utf-8", buffering=1)
+    if sys.stdout is None:
+        sys.stdout = log_file
+    if sys.stderr is None:
+        sys.stderr = log_file
+except Exception:
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 
 def init_environment():
     """检测并初始化 .env 配置文件"""
@@ -112,8 +121,9 @@ def main():
 
     # 4. 阻塞运行原生窗口（用户关闭窗口后自动唤醒退出）
     try:
-        webview.start(debug=False)
+        webview.start(debug=True)
     finally:
+
         print("\n[*] 检测到窗口已关闭，正在安全退出后端服务...")
         server_thread.stop()
 

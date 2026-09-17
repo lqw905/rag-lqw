@@ -86,9 +86,21 @@ export const App: React.FC = () => {
   const loadKBs = async () => {
     try {
       const kbs = await api.listKnowledgeBases();
-      setKnowledgeBases(kbs);
-      if (kbs.length > 0 && (!selectedKB || !kbs.some((k) => k.kb_name === selectedKB))) {
-        setSelectedKB(kbs[0].kb_name);
+      if (kbs.length === 0) {
+        // 若系统完全无知识库，自动初始化默认知识库，保证开箱即用
+        try {
+          const defaultKB = await api.createKnowledgeBase('默认知识库', '系统初始化知识库');
+          setKnowledgeBases([defaultKB]);
+          setSelectedKB(defaultKB.kb_name);
+        } catch (e) {
+          console.error('Failed to auto-create default KB:', e);
+          setKnowledgeBases([]);
+        }
+      } else {
+        setKnowledgeBases(kbs);
+        if (!selectedKB || !kbs.some((k) => k.kb_name === selectedKB)) {
+          setSelectedKB(kbs[0].kb_name);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch knowledge bases:', err);
@@ -98,6 +110,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadKBs();
   }, []);
+
 
   // Filter sessions for the currently selected Knowledge Base (Hide empty sessions from Sidebar)
   const currentKBSessions = useMemo(() => {
@@ -195,10 +208,33 @@ export const App: React.FC = () => {
 
   // Send message and stream response into the active session
   const handleSendMessage = async (query: string) => {
-    if (!selectedKB || !activeSessionId || isStreaming) return;
+    if (!selectedKB) {
+      alert('请先在左侧选择或新建一个知识库！');
+      return;
+    }
+    if (isStreaming) return;
 
-    const currentSession = sessions.find((s) => s.id === activeSessionId);
-    const isFirstMessage = !currentSession || currentSession.messages.length === 0;
+    let targetSessionId = activeSessionId;
+    let currentSession = sessions.find((s) => s.id === targetSessionId);
+    let isFirstMessage = true;
+
+    if (!targetSessionId || !currentSession) {
+      targetSessionId = 'session-' + Date.now();
+      const newSession: ChatSession = {
+        id: targetSessionId,
+        kb_name: selectedKB,
+        title: query.slice(0, 20) + (query.length > 20 ? '...' : ''),
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        messages: [],
+      };
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveSessionId(targetSessionId);
+      currentSession = newSession;
+      isFirstMessage = true;
+    } else {
+      isFirstMessage = currentSession.messages.length === 0;
+    }
 
     const userMessageId = 'user-' + Date.now();
     const assistantMessageId = 'assistant-' + (Date.now() + 1);
@@ -227,7 +263,7 @@ export const App: React.FC = () => {
     // Update session state with user message + empty assistant placeholder
     setSessions((prev) =>
       prev.map((s) => {
-        if (s.id === activeSessionId) {
+        if (s.id === targetSessionId) {
           return {
             ...s,
             title: autoTitle,
@@ -257,7 +293,7 @@ export const App: React.FC = () => {
       onReferences: (references) => {
         setSessions((prev) =>
           prev.map((s) => {
-            if (s.id === activeSessionId) {
+            if (s.id === targetSessionId) {
               return {
                 ...s,
                 messages: s.messages.map((m) =>
@@ -273,7 +309,7 @@ export const App: React.FC = () => {
       onDelta: (delta) => {
         setSessions((prev) =>
           prev.map((s) => {
-            if (s.id === activeSessionId) {
+            if (s.id === targetSessionId) {
               return {
                 ...s,
                 messages: s.messages.map((m) =>
@@ -289,7 +325,7 @@ export const App: React.FC = () => {
         setIsStreaming(false);
         setSessions((prev) =>
           prev.map((s) => {
-            if (s.id === activeSessionId) {
+            if (s.id === targetSessionId) {
               return {
                 ...s,
                 messages: s.messages.map((m) =>
@@ -305,7 +341,7 @@ export const App: React.FC = () => {
         setIsStreaming(false);
         setSessions((prev) =>
           prev.map((s) => {
-            if (s.id === activeSessionId) {
+            if (s.id === targetSessionId) {
               return {
                 ...s,
                 messages: s.messages.map((m) =>
@@ -315,6 +351,7 @@ export const App: React.FC = () => {
                 ),
               };
             }
+
             return s;
           })
         );

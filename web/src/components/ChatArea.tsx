@@ -45,9 +45,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
+    if (!selectedKB) {
+      alert('请先在左侧选择或新建一个知识库！');
+      return;
+    }
     onSendMessage(input.trim());
     setInput('');
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -199,17 +204,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   autoFocus
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="有问必答，深度检索私域知识库..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  placeholder={selectedKB ? `向「${selectedKB}」提问，深度检索私域知识库...` : "请先在左侧选择或新建知识库..."}
                   className="w-full bg-transparent text-sm sm:text-base text-ink-900 placeholder:text-ink-400 focus:outline-none px-1"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isStreaming}
                   className="w-8 h-8 rounded-full bg-ink-900 hover:bg-accent-hover text-white flex items-center justify-center shrink-0 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-xs cursor-pointer"
-                  title="发送提问"
+                  title="发送提问 (Enter)"
                 >
                   <CornerDownLeft className="w-4 h-4" />
                 </button>
+
               </div>
             </form>
 

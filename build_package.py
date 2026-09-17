@@ -108,9 +108,25 @@ def main():
         print(f"[!] PyInstaller 未能生成目标程序: {bundle_exe}")
         sys.exit(1)
 
+    # 确保当前真实配置与数据同步进入打包目录
+    src_env = ROOT_DIR / ".env"
+    dest_env = DIST_DIR / "RAG-GK" / ".env"
+    if src_env.exists():
+        shutil.copy(src_env, dest_env)
+        print("[+] 同步项目 .env 配置文件到打包目录")
+
+    src_data = ROOT_DIR / "data"
+    dest_data = DIST_DIR / "RAG-GK" / "data"
+    if src_data.exists():
+        if dest_data.exists():
+            shutil.rmtree(dest_data)
+        shutil.copytree(src_data, dest_data)
+        print("[+] 同步已有知识库索引数据 (data/) 到打包目录")
+
     # 5. 步骤 3：NSIS 生成安装程序
     nsi_file = PACKAGING_DIR / "installer.nsi"
     run_step("3. NSIS 编译生成 Windows 安装包", [makensis_path, "/INPUTCHARSET", "UTF8", str(nsi_file)], cwd=PACKAGING_DIR)
+
 
 
     # 6. 检查输出成果

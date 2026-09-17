@@ -157,5 +157,23 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 
 ---
 
+## 📦 Windows 客户端打包与安装包分发
+
+本项目支持一键将 FastAPI 后端与 React 前端整合成独立的 Windows 绿色运行包与安装包向导（Setup.exe），生成的安装程序无需用户预装 Python、Node.js 或任何运行库：
+
+### 一键打包方式
+1. 双击项目根目录下的 `build.bat`，或在命令行运行：
+   ```powershell
+   python build_package.py
+   ```
+2. 打包流水线将全自动执行：
+   - 编译 React 前端静态资源（`web/dist`）
+   - 调用 PyInstaller 固化独立 Python 环境（`dist/RAG-GK/`）
+   - 调用 NSIS 编译生成现代 Windows 安装向导（`dist/RAG-GK_v1.0.0_Setup.exe`，体积仅约 64MB）
+3. 生成的安装向导支持自定义安装路径、创建开始菜单与桌面快捷方式、并在控制面板生成标准的独立卸载程序。
+
+---
+
 ## 📄 开源许可证
 MIT License.
+

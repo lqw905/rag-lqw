@@ -192,36 +192,21 @@ def main():
     )
 
     def set_white_titlebar():
-        """通过 Windows DWM & Win32 API 定制原生窗口：纯白高雅标题栏、彻底去除系统主题蓝色外边框"""
+        """通过 Windows DWM API 定制原生窗口：纯白高雅标题栏、彻底去除系统主题蓝色外边框"""
         try:
             import ctypes
             from ctypes import byref, c_int, sizeof
 
             hwnd = int(window.native.Handle.ToInt32())
-            user32 = ctypes.WinDLL("user32.dll")
             dwmapi = ctypes.WinDLL("dwmapi.dll")
 
-            # 1. 绑定纯透明原生图标句柄（切勿传 0，传 0 会导致 Windows 回退显示默认类图标）
-            try:
-                import clr
-                clr.AddReference("System.Drawing")
-                import System.Drawing
-                if icon_path and os.path.exists(icon_path):
-                    ic = System.Drawing.Icon(icon_path)
-                    window.native.Icon = ic
-                    h_icon = int(ic.Handle.ToInt64())
-                    user32.SendMessageW(hwnd, 0x0080, 0, h_icon)
-                    user32.SendMessageW(hwnd, 0x0080, 1, h_icon)
-            except Exception as e:
-                print(f"[!] 绑定透明图标异常: {e}")
-
-            # 2. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
+            # 1. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
             dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(0)), sizeof(c_int))
-            # 3. 标题栏背景设为纯白 (DWMWA_CAPTION_COLOR = 35, 0x00FFFFFF)
+            # 2. 标题栏背景设为纯白 (DWMWA_CAPTION_COLOR = 35, 0x00FFFFFF)
             dwmapi.DwmSetWindowAttribute(hwnd, 35, byref(c_int(0x00FFFFFF)), sizeof(c_int))
-            # 4. 标题栏文字设为深灰 (DWMWA_TEXT_COLOR = 36, 0x001F2937)
+            # 3. 标题栏文字设为深灰 (DWMWA_TEXT_COLOR = 36, 0x001F2937)
             dwmapi.DwmSetWindowAttribute(hwnd, 36, byref(c_int(0x001F2937)), sizeof(c_int))
-            # 5. 彻底消除 Windows 11 系统蓝色外边框！将外边框强制设为纯白 (DWMWA_BORDER_COLOR = 34, 0x00FFFFFF)
+            # 4. 彻底消除 Windows 11 系统蓝色外边框！将外边框强制设为纯白 (DWMWA_BORDER_COLOR = 34, 0x00FFFFFF)
             dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(0x00FFFFFF)), sizeof(c_int))
         except Exception as e:
             print(f"[!] 设置标题栏与边框样式失败: {e}")

@@ -6,6 +6,7 @@ RAG-GK 桌面端原生独立窗口客户端 (Native Desktop Client)
 import os
 import sys
 import time
+import socket
 import shutil
 import threading
 from pathlib import Path
@@ -49,7 +50,6 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
-
 def init_environment():
     """检测并初始化 .env 配置文件"""
     env_file = APP_DIR / ".env"
@@ -65,6 +65,30 @@ def init_environment():
             except Exception as e:
                 print(f"[!] [配置初始化] 复制 .env 失败: {e}")
 
+def wait_for_server_ready(url: str, timeout: float = 10.0) -> bool:
+    """轮询等待后端服务完全就绪（健康检查接口返回 200）"""
+    import urllib.request
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            with urllib.request.urlopen(f"{url}/health", timeout=0.8) as resp:
+                if resp.status == 200:
+                    return True
+        except Exception:
+            time.sleep(0.1)
+    return False
+
+def find_available_port(start_port: int = 8000, max_attempts: int = 20) -> int:
+    """动态探测可用端口，防止端口占用导致卡死"""
+    for p in range(start_port, start_port + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", p))
+                return p
+            except OSError:
+                continue
+    return start_port
+
 class ServerThread(threading.Thread):
     """在后台守护线程中启动并管理 Uvicorn 服务"""
     def __init__(self, app, host: str, port: int):
@@ -78,7 +102,10 @@ class ServerThread(threading.Thread):
         self.server = uvicorn.Server(self.config)
 
     def run(self):
-        self.server.run()
+        try:
+            self.server.run()
+        except Exception as e:
+            print(f"[!] 后端服务异常: {e}")
 
     def stop(self):
         self.server.should_exit = True
@@ -90,23 +117,24 @@ def main():
     from app.config import settings
     from app.main import app
 
-    port = settings.PORT or 8000
-    host = settings.HOST if settings.HOST not in ("0.0.0.0", "::") else "127.0.0.1"
-    server_url = f"http://{host}:{port}"
+    # 自动探测可用端口，防止双开或旧端口占用冲突
+    default_port = settings.PORT or 8000
+    actual_port = find_available_port(default_port)
+    server_url = f"http://127.0.0.1:{actual_port}"
 
     print("=" * 65)
     print("      RAG-GK 知识库智能问答系统 - 原生桌面客户端")
     print("=" * 65)
-    print(f"[*] 后端服务地址: {server_url}")
+    print(f"[*] 后端服务地址: {server_url} (端口: {actual_port})")
     print(f"[*] 正在拉起原生应用窗口 (WebView2)...")
     print("=" * 65 + "\n")
 
     # 1. 启动后台 Uvicorn 服务线程
-    server_thread = ServerThread(app, host=settings.HOST, port=port)
+    server_thread = ServerThread(app, host="127.0.0.1", port=actual_port)
     server_thread.start()
 
-    # 2. 等待端口就绪
-    time.sleep(0.6)
+    # 2. 主动轮询等待后端服务就绪（通常仅需 0.4~0.8 秒，最长保障等待 10 秒）
+    wait_for_server_ready(server_url, timeout=10.0)
 
     # 3. 创建原生独立窗口（无浏览器边框/地址栏，完全独立的原生窗口）
     window = webview.create_window(
@@ -120,7 +148,7 @@ def main():
     )
 
     def set_white_titlebar():
-        """通过 Windows DWM & Win32 API 定制原生窗口：纯白高雅标题栏、隐藏左上角默认小图标"""
+        """通过 Windows DWM & Win32 API 定制原生窗口：纯白高雅标题栏、清除标题栏默认图标"""
         try:
             import ctypes
             from ctypes import byref, c_int, sizeof
@@ -129,23 +157,9 @@ def main():
             user32 = ctypes.WinDLL("user32.dll")
             dwmapi = ctypes.WinDLL("dwmapi.dll")
 
-            # 1. 隐藏标题栏左侧默认小图标
-            try:
-                if hasattr(window.native, "ShowIcon"):
-                    window.native.ShowIcon = False
-            except Exception:
-                pass
-
-            # 移除窗口图标句柄 (WM_SETICON = 0x0080, ICON_SMALL = 0, ICON_BIG = 1)
+            # 1. 安全移除窗口图标句柄 (WM_SETICON = 0x0080，置 NULL 避免触发重绘死锁)
             user32.SendMessageW(hwnd, 0x0080, 0, 0)
             user32.SendMessageW(hwnd, 0x0080, 1, 0)
-
-            # 设置扩展样式隐藏图标 (WS_EX_DLGMODALFRAME = 0x00000001, GWL_EXSTYLE = -20)
-            ex_style = user32.GetWindowLongW(hwnd, -20)
-            user32.SetWindowLongW(hwnd, -20, ex_style | 0x00000001)
-
-            # 刷新窗口外边框以生效 (SWP_FRAMECHANGED = 0x0020, SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004)
-            user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004)
 
             # 2. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
             dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(0)), sizeof(c_int))
@@ -158,14 +172,21 @@ def main():
 
     window.events.shown += set_white_titlebar
 
+    # 4. 监听窗口关闭事件：强制瞬间彻底退出进程，绝不留僵尸后台
+    def on_window_closed():
+        try:
+            server_thread.stop()
+        except Exception:
+            pass
+        os._exit(0)
 
-    # 4. 阻塞运行原生窗口（用户关闭窗口后自动唤醒退出）
+    window.events.closed += on_window_closed
+
+    # 5. 阻塞运行原生窗口
     try:
-        webview.start(debug=True)
+        webview.start(debug=False)
     finally:
-        print("\n[*] 检测到窗口已关闭，正在安全退出后端服务...")
-        server_thread.stop()
-
+        os._exit(0)
 
 if __name__ == "__main__":
     main()

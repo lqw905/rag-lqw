@@ -111,12 +111,12 @@ class ServerThread(threading.Thread):
         self.server.should_exit = True
 
 def ensure_transparent_icon() -> str:
-    """获取或生成 16x16 纯透明 ico 图标，彻底消除标题栏左侧默认小图标"""
+    """获取或生成 16x16~256x256 纯透明多尺寸 ico 图标，彻底根除标题栏默认图标"""
     candidates = [
-        APP_DIR / "transparent.ico",
-        BUNDLE_DIR / "transparent.ico",
         APP_DIR / "packaging" / "transparent.ico",
         BUNDLE_DIR / "packaging" / "transparent.ico",
+        APP_DIR / "transparent.ico",
+        BUNDLE_DIR / "transparent.ico",
     ]
     for c in candidates:
         if c and c.exists():
@@ -124,20 +124,31 @@ def ensure_transparent_icon() -> str:
 
     target = APP_DIR / "transparent.ico"
     try:
-        import clr
-        clr.AddReference("System.Drawing")
-        import System.Drawing
-        from System.IO import FileStream, FileMode
-
-        bmp = System.Drawing.Bitmap(16, 16)
-        h_icon = bmp.GetHicon()
-        icon = System.Drawing.Icon.FromHandle(h_icon)
-        fs = FileStream(str(target), FileMode.Create)
-        icon.Save(fs)
-        fs.Close()
+        import struct
+        sizes = (16, 20, 24, 32, 48, 64, 128, 256)
+        num_images = len(sizes)
+        header = struct.pack('<HHH', 0, 1, num_images)
+        entries, images = [], []
+        offset = 6 + 16 * num_images
+        for size in sizes:
+            w = size if size < 256 else 0
+            h = size if size < 256 else 0
+            header_size = 40
+            color_size = size * size * 4
+            row_bytes = ((size + 31) // 32) * 4
+            mask_size = row_bytes * size
+            image_size = header_size + color_size + mask_size
+            entry = struct.pack('<BBBBHHII', w, h, 0, 0, 1, 32, image_size, offset)
+            entries.append(entry)
+            bmp_header = struct.pack('<IIIHHIIIIII', 40, size, size * 2, 1, 32, 0, color_size, 0, 0, 0, 0)
+            images.append(bmp_header + (b'\x00' * color_size) + (b'\x00' * mask_size))
+            offset += image_size
+        ico_data = header + b''.join(entries) + b''.join(images)
+        with open(target, 'wb') as f:
+            f.write(ico_data)
         return str(target.resolve())
     except Exception as e:
-        print(f"[!] 生成透明图标失败: {e}")
+        print(f"[!] 生成多尺寸透明图标失败: {e}")
         return ""
 
 def main():
@@ -190,9 +201,19 @@ def main():
             user32 = ctypes.WinDLL("user32.dll")
             dwmapi = ctypes.WinDLL("dwmapi.dll")
 
-            # 1. 安全清除 Win32 图标句柄 (WM_SETICON = 0x0080，双重保险)
-            user32.SendMessageW(hwnd, 0x0080, 0, 0)
-            user32.SendMessageW(hwnd, 0x0080, 1, 0)
+            # 1. 绑定纯透明原生图标句柄（切勿传 0，传 0 会导致 Windows 回退显示默认类图标）
+            try:
+                import clr
+                clr.AddReference("System.Drawing")
+                import System.Drawing
+                if icon_path and os.path.exists(icon_path):
+                    ic = System.Drawing.Icon(icon_path)
+                    window.native.Icon = ic
+                    h_icon = int(ic.Handle.ToInt64())
+                    user32.SendMessageW(hwnd, 0x0080, 0, h_icon)
+                    user32.SendMessageW(hwnd, 0x0080, 1, h_icon)
+            except Exception as e:
+                print(f"[!] 绑定透明图标异常: {e}")
 
             # 2. 强制浅色沉浸模式 (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
             dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(0)), sizeof(c_int))

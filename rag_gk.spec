@@ -12,11 +12,14 @@ datas = [
 
 datas += collect_data_files('jieba')
 datas += collect_data_files('chromadb')
+datas += collect_data_files('webview')
+datas += collect_data_files('clr_loader')
 datas += copy_metadata('tiktoken')
 datas += copy_metadata('tqdm')
 datas += copy_metadata('regex')
 datas += copy_metadata('requests')
 datas += copy_metadata('packaging')
+datas += copy_metadata('pywebview')
 
 hiddenimports = [
     'uvicorn',
@@ -49,10 +52,18 @@ hiddenimports = [
     'chromadb',
     'numpy',
     'loguru',
+    'webview',
+    'webview.platforms.winforms',
+    'webview.platforms.edgechromium',
+    'clr',
+    'clr_loader',
+    'pythonnet',
 ]
 
 hiddenimports += collect_submodules('chromadb')
 hiddenimports += collect_submodules('tiktoken_ext')
+hiddenimports += collect_submodules('webview')
+hiddenimports += collect_submodules('pythonnet')
 
 a = Analysis(
     ['desktop_launcher.py'],

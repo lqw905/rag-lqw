@@ -94,9 +94,14 @@ def main():
         print("[!] 前端构建输出不存在: web/dist/index.html")
         sys.exit(1)
 
+    # 尝试终止可能正在后台运行的旧版本 RAG-GK.exe，防止文件占用
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/F", "/IM", "RAG-GK.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     # 4. 步骤 2：PyInstaller 目录打包
     spec_file = ROOT_DIR / "rag_gk.spec"
     run_step("2. PyInstaller 打包 Python 独立环境", [pyinstaller_path, "--clean", "--noconfirm", str(spec_file)], cwd=ROOT_DIR)
+
 
     bundle_exe = DIST_DIR / "RAG-GK" / "RAG-GK.exe"
     if not bundle_exe.exists():

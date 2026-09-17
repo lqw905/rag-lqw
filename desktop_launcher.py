@@ -12,12 +12,23 @@ from pathlib import Path
 import uvicorn
 import webview
 
-# 保证 Windows 控制台输出不因编码中断
-if hasattr(sys.stdout, "reconfigure"):
+# 避免在无控制台（GUI模式/console=False）下 sys.stdout/sys.stderr 为 None 导致抛出异常
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+elif hasattr(sys.stdout, "reconfigure"):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
+
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+elif hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 
 # 确定运行根目录
 if getattr(sys, "frozen", False):

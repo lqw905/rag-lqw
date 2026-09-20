@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { CitationDrawer } from './components/CitationDrawer';
@@ -382,53 +381,48 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-screen bg-paper text-ink-900 flex flex-col overflow-hidden font-sans selection:bg-stone-200 selection:text-ink-900">
-      {/* 顶部极简定制标题栏 (无图标、支持原生拖拽与窗口控制) */}
-      <TitleBar />
-
-      <div className="flex-1 flex overflow-hidden">
-        {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 (上下撑到底) */}
-        <Sidebar
-          knowledgeBases={knowledgeBases}
-          selectedKB={selectedKB}
-          onSelectKB={(kb) => setSelectedKB(kb)}
-          onRefreshKBs={loadKBs}
-          onOpenChunkModal={() => setIsChunkModalOpen(true)}
-          sessions={currentKBSessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={(id) => {
-            setActiveSessionId(id);
-            const target = sessions.find((s) => s.id === id);
-            if (target && target.messages.length > 0) {
-              const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
-              if (lastAssistant && lastAssistant.references) {
-                setActiveReferences(lastAssistant.references);
-              }
+    <div className="h-screen w-screen bg-paper text-ink-900 flex overflow-hidden font-sans selection:bg-stone-200 selection:text-ink-900">
+      {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 (上下撑到底) */}
+      <Sidebar
+        knowledgeBases={knowledgeBases}
+        selectedKB={selectedKB}
+        onSelectKB={(kb) => setSelectedKB(kb)}
+        onRefreshKBs={loadKBs}
+        onOpenChunkModal={() => setIsChunkModalOpen(true)}
+        sessions={currentKBSessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={(id) => {
+          setActiveSessionId(id);
+          const target = sessions.find((s) => s.id === id);
+          if (target && target.messages.length > 0) {
+            const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
+            if (lastAssistant && lastAssistant.references) {
+              setActiveReferences(lastAssistant.references);
             }
-          }}
-          onCreateSession={() => handleCreateSession(selectedKB)}
-          onRenameSession={handleRenameSession}
-          onDeleteSession={handleDeleteSession}
-          onClearSessions={handleClearSessionsForKB}
-          onOpenPlaygroundModal={() => setIsPlaygroundOpen(true)}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={handleToggleSidebar}
-          width={sidebarWidth}
-          onWidthChange={handleWidthChange}
-        />
+          }
+        }}
+        onCreateSession={() => handleCreateSession(selectedKB)}
+        onRenameSession={handleRenameSession}
+        onDeleteSession={handleDeleteSession}
+        onClearSessions={handleClearSessionsForKB}
+        onOpenPlaygroundModal={() => setIsPlaygroundOpen(true)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
+        width={sidebarWidth}
+        onWidthChange={handleWidthChange}
+      />
 
-        {/* 右侧：始终专注主对话研读区 (上下撑到底，通体左右纯粹结构) */}
-        <ChatArea
-          messages={activeSession ? activeSession.messages : []}
-          sessionTitle={activeSession ? activeSession.title : ''}
-          selectedKB={selectedKB}
-          isStreaming={isStreaming}
-          onSendMessage={handleSendMessage}
-          onStopGeneration={handleStopGeneration}
-          onClearMessages={handleClearCurrentMessages}
-          onOpenCitation={handleOpenCitation}
-        />
-      </div>
+      {/* 右侧：始终专注主对话研读区 (上下撑到底，通体左右纯粹结构) */}
+      <ChatArea
+        messages={activeSession ? activeSession.messages : []}
+        sessionTitle={activeSession ? activeSession.title : ''}
+        selectedKB={selectedKB}
+        isStreaming={isStreaming}
+        onSendMessage={handleSendMessage}
+        onStopGeneration={handleStopGeneration}
+        onClearMessages={handleClearCurrentMessages}
+        onOpenCitation={handleOpenCitation}
+      />
 
       {/* 侧边滑出：引用溯源抽屉 */}
       <CitationDrawer

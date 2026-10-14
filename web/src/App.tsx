@@ -4,6 +4,7 @@ import { ChatArea } from './components/ChatArea';
 import { CitationDrawer } from './components/CitationDrawer';
 import { ChunkModal } from './components/ChunkModal';
 import { Playground } from './components/Playground';
+import { WindowControls } from './components/WindowControls';
 import type { KnowledgeBase, ChatSession, ChatMessage, ReferenceItem } from './types';
 import { api } from './services/api';
 
@@ -69,6 +70,41 @@ export const App: React.FC = () => {
   const [isCitationOpen, setIsCitationOpen] = useState(false);
   const [activeReferences, setActiveReferences] = useState<ReferenceItem[]>([]);
   const [activeRefId, setActiveRefId] = useState<number | null>(null);
+
+  // Retrieval Settings state (persisted to localStorage)
+  const [minScore, setMinScore] = useState<number>(() => {
+    const saved = localStorage.getItem('rag_min_score');
+    return saved !== null ? parseFloat(saved) : 0.08;
+  });
+  const [topN, setTopN] = useState<number>(() => {
+    const saved = localStorage.getItem('rag_top_n');
+    return saved !== null ? parseInt(saved, 10) : 5;
+  });
+  const [enableRewrite, setEnableRewrite] = useState<boolean>(() => {
+    const saved = localStorage.getItem('rag_enable_rewrite');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [enableRerank, setEnableRerank] = useState<boolean>(() => {
+    const saved = localStorage.getItem('rag_enable_rerank');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const handleMinScoreChange = (val: number) => {
+    setMinScore(val);
+    localStorage.setItem('rag_min_score', val.toString());
+  };
+  const handleTopNChange = (val: number) => {
+    setTopN(val);
+    localStorage.setItem('rag_top_n', val.toString());
+  };
+  const handleEnableRewriteChange = (val: boolean) => {
+    setEnableRewrite(val);
+    localStorage.setItem('rag_enable_rewrite', val.toString());
+  };
+  const handleEnableRerankChange = (val: boolean) => {
+    setEnableRerank(val);
+    localStorage.setItem('rag_enable_rerank', val.toString());
+  };
 
   // Chunk Visualizer Modal State
   const [isChunkModalOpen, setIsChunkModalOpen] = useState(false);
@@ -153,7 +189,7 @@ export const App: React.FC = () => {
     const newSession: ChatSession = {
       id: newSessionId,
       kb_name: kbName,
-      title: '新研读 ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      title: '新对话 ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       created_at: Date.now(),
       updated_at: Date.now(),
       messages: [],
@@ -173,7 +209,7 @@ export const App: React.FC = () => {
 
   // Delete a session
   const handleDeleteSession = (sessionId: string) => {
-    if (!confirm('确定要删除此研读记录吗？')) return;
+    if (!confirm('确定要删除此对话记录吗？')) return;
     setSessions((prev) => {
       const remaining = prev.filter((s) => s.id !== sessionId);
       const remainingKB = remaining.filter((s) => s.kb_name === selectedKB);
@@ -191,19 +227,9 @@ export const App: React.FC = () => {
 
   // Clear all sessions for current KB
   const handleClearSessionsForKB = () => {
-    if (!confirm(`确定清空知识库 "${selectedKB}" 下的所有研读记录吗？`)) return;
+    if (!confirm(`确定清空知识库 "${selectedKB}" 下的所有对话记录吗？`)) return;
     setSessions((prev) => prev.filter((s) => s.kb_name !== selectedKB));
     setTimeout(() => handleCreateSession(selectedKB), 0);
-  };
-
-  // Clear messages in current active session
-  const handleClearCurrentMessages = () => {
-    if (!confirm('确定要清空当前对话中的消息吗？')) return;
-    if (!activeSessionId) return;
-    setSessions((prev) =>
-      prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [], updated_at: Date.now() } : s))
-    );
-    setIsCitationOpen(false);
   };
 
   // Send message and stream response into the active session
@@ -258,7 +284,7 @@ export const App: React.FC = () => {
     // Auto-rename session if it's the first message
     const autoTitle = isFirstMessage && (currentSession?.title.startsWith('新对话') || currentSession?.title.startsWith('新研读'))
       ? query.slice(0, 20) + (query.length > 20 ? '...' : '')
-      : currentSession?.title || '研读对话';
+      : currentSession?.title || '新对话';
 
     // Update session state with user message + empty assistant placeholder
     setSessions((prev) =>
@@ -289,6 +315,10 @@ export const App: React.FC = () => {
       kb_name: selectedKB,
       query,
       history,
+      top_n: topN,
+      enable_rerank: enableRerank,
+      enable_rewrite: enableRewrite,
+      min_score: minScore,
       signal: abortController.signal,
       onReferences: (references) => {
         setSessions((prev) =>
@@ -381,48 +411,76 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-screen bg-paper text-ink-900 flex overflow-hidden font-sans selection:bg-stone-200 selection:text-ink-900">
-      {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 (上下撑到底) */}
-      <Sidebar
-        knowledgeBases={knowledgeBases}
-        selectedKB={selectedKB}
-        onSelectKB={(kb) => setSelectedKB(kb)}
-        onRefreshKBs={loadKBs}
-        onOpenChunkModal={() => setIsChunkModalOpen(true)}
-        sessions={currentKBSessions}
-        activeSessionId={activeSessionId}
-        onSelectSession={(id) => {
-          setActiveSessionId(id);
-          const target = sessions.find((s) => s.id === id);
-          if (target && target.messages.length > 0) {
-            const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
-            if (lastAssistant && lastAssistant.references) {
-              setActiveReferences(lastAssistant.references);
-            }
-          }
-        }}
-        onCreateSession={() => handleCreateSession(selectedKB)}
-        onRenameSession={handleRenameSession}
-        onDeleteSession={handleDeleteSession}
-        onClearSessions={handleClearSessionsForKB}
-        onOpenPlaygroundModal={() => setIsPlaygroundOpen(true)}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={handleToggleSidebar}
-        width={sidebarWidth}
-        onWidthChange={handleWidthChange}
+    <div className="h-screen w-screen bg-paper text-ink-900 flex overflow-hidden font-sans selection:bg-stone-200 selection:text-ink-900 relative">
+      {/*
+        桌面端无边框窗口的拖动带：窗口过程把窗口最顶部 36px 返回 HTCAPTION，
+        从而实现拖动、双击最大化与 Win+方向键贴靠。
+        高度必须与 desktop_launcher.py 的 TITLEBAR_HEIGHT 保持一致。
+
+        ⚠ 必须用 absolute 浮在内容之上，不能参与普通流 —— 否则会把整个界面往下推 36px。
+        ⚠ 右上角是自绘窗口按钮区：窗口过程会按 WINDOW_CONTROLS_WIDTH 把这一块排除在
+          拖动带之外，所以放在这里的按钮可以正常点击。
+      */}
+      <div
+        className="absolute top-0 left-0 right-0 h-9 z-40 select-none pointer-events-none"
+        data-drag-region="true"
       />
 
-      {/* 右侧：始终专注主对话研读区 (上下撑到底，通体左右纯粹结构) */}
-      <ChatArea
-        messages={activeSession ? activeSession.messages : []}
-        sessionTitle={activeSession ? activeSession.title : ''}
-        selectedKB={selectedKB}
-        isStreaming={isStreaming}
-        onSendMessage={handleSendMessage}
-        onStopGeneration={handleStopGeneration}
-        onClearMessages={handleClearCurrentMessages}
-        onOpenCitation={handleOpenCitation}
-      />
+      {/* 自绘窗口按钮：右上角（Windows 惯例位置）。浏览器里不渲染（无 pywebview API） */}
+      <div className="absolute top-1 right-1 z-50">
+        <WindowControls />
+      </div>
+
+      {/* flex-1 + min-h-0：确保子项严格被窗口高度约束，避免侧栏溢出把底部窗口按钮挤出可视区 */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* 左侧可收起、可拖拽调节宽度的极简统一单栏 (上下撑到底) */}
+        <Sidebar
+          knowledgeBases={knowledgeBases}
+          selectedKB={selectedKB}
+          onSelectKB={(kb) => setSelectedKB(kb)}
+          onRefreshKBs={loadKBs}
+          onOpenChunkModal={() => setIsChunkModalOpen(true)}
+          sessions={currentKBSessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={(id) => {
+            setActiveSessionId(id);
+            const target = sessions.find((s) => s.id === id);
+            if (target && target.messages.length > 0) {
+              const lastAssistant = [...target.messages].reverse().find((m) => m.role === 'assistant' && m.references && m.references.length > 0);
+              if (lastAssistant && lastAssistant.references) {
+                setActiveReferences(lastAssistant.references);
+              }
+            }
+          }}
+          onCreateSession={() => handleCreateSession(selectedKB)}
+          onRenameSession={handleRenameSession}
+          onDeleteSession={handleDeleteSession}
+          onClearSessions={handleClearSessionsForKB}
+          onOpenPlaygroundModal={() => setIsPlaygroundOpen(true)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+          width={sidebarWidth}
+          onWidthChange={handleWidthChange}
+        />
+
+        {/* 右侧：始终专注主对话研读区 (上下撑到底，通体左右纯粹结构) */}
+        <ChatArea
+          messages={activeSession ? activeSession.messages : []}
+          selectedKB={selectedKB}
+          isStreaming={isStreaming}
+          onSendMessage={handleSendMessage}
+          onStopGeneration={handleStopGeneration}
+          onOpenCitation={handleOpenCitation}
+          minScore={minScore}
+          onMinScoreChange={handleMinScoreChange}
+          topN={topN}
+          onTopNChange={handleTopNChange}
+          enableRewrite={enableRewrite}
+          onEnableRewriteChange={handleEnableRewriteChange}
+          enableRerank={enableRerank}
+          onEnableRerankChange={handleEnableRerankChange}
+        />
+      </div>
 
       {/* 侧边滑出：引用溯源抽屉 */}
       <CitationDrawer

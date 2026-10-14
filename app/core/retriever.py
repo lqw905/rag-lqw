@@ -5,34 +5,17 @@ from app.config import settings
 from app.core.vector_store import vector_store
 from app.core.bm25 import bm25_store
 from app.core.reranker import reranker_client
-
-CHITCHAT_PATTERNS = {
-    "你好", "您好", "hi", "hello", "hey", "在吗", "在不在", "早上好", "下午好", "晚上好",
-    "早安", "午安", "晚安", "谢谢", "多谢", "感谢", "thank you", "thanks", "再见", "拜拜", "bye",
-    "你是谁", "你叫什么", "你能做什么", "介绍一下你自己", "帮助", "help", "hello there", "halo"
-}
-
-
-def is_chitchat(query: str) -> bool:
-    """识别日常闲聊与礼貌问候，避免无效检索污染上下文"""
-    q = query.strip().lower()
-    q_clean = re.sub(r'[^\w\u4e00-\u9fff]', '', q).strip()
-    if not q_clean:
-        return True
-    if q_clean in CHITCHAT_PATTERNS or q in CHITCHAT_PATTERNS:
-        return True
-    if len(q_clean) <= 4 and any(w in q_clean for w in ["你好", "您好", "hi", "hello", "在吗", "谢谢", "再见"]):
-        return True
-    return False
+from app.core.query_rewriter import query_rewriter, is_chitchat, CHITCHAT_PATTERNS
 
 
 class HybridRetriever:
     """
     混合检索器：
     1. 前置意图识别：识别日常打招呼/闲聊并跳过检索；
-    2. 并发/顺序调用 Dense 向量检索与 Sparse BM25 检索；
-    3. 使用 RRF (Reciprocal Rank Fusion) 融合双路排名；
-    4. 调用 Reranker 进行交叉注意力打分，并通过置信度阈值过滤无效噪音，输出 Top-N。
+    2. 轻量 LLM 查询提纯（Query Rewriting）：去除口语与宽泛修饰词噪声，提炼核心检索实体；
+    3. 并发/顺序调用 Dense 向量检索与 Sparse BM25 检索；
+    4. 使用 RRF (Reciprocal Rank Fusion) 融合双路排名；
+    5. 调用 Reranker 进行交叉注意力打分，并通过置信度阈值过滤无效噪音，输出 Top-N。
     """
 
     def __init__(self, rrf_k: int = settings.RRF_K):
@@ -46,6 +29,8 @@ class HybridRetriever:
         sparse_top_k: int = settings.SPARSE_TOP_K,
         rerank_top_n: int = settings.RERANK_TOP_N,
         enable_rerank: bool = True,
+        enable_rewrite: Optional[bool] = None,
+        chat_history: Optional[List[Dict[str, str]]] = None,
         min_score: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -60,22 +45,32 @@ class HybridRetriever:
             logger.info(f"Query '{query_str}' recognized as chitchat. Skipping KB retrieval.")
             return []
 
-        # 2. 向量密集检索
+        # 2. 查询提纯与改写（去噪提纯核心检索实体）
+        should_rewrite = enable_rewrite if enable_rewrite is not None else settings.ENABLE_QUERY_REWRITE
+        search_query = query_str
+        if should_rewrite:
+            try:
+                search_query = query_rewriter.rewrite(query_str, chat_history=chat_history)
+            except Exception as e:
+                logger.warning(f"Query rewrite failed: {e}, falling back to original query")
+                search_query = query_str
+
+        # 3. 向量密集检索
         try:
-            dense_hits = vector_store.search(kb_name, query_str, top_k=dense_top_k)
+            dense_hits = vector_store.search(kb_name, search_query, top_k=dense_top_k)
         except Exception as e:
             logger.error(f"Dense vector search failed: {e}")
             dense_hits = []
 
-        # 3. BM25 稀疏关键词检索
+        # 4. BM25 稀疏关键词检索
         try:
-            sparse_hits = bm25_store.search(kb_name, query_str, top_k=sparse_top_k)
+            sparse_hits = bm25_store.search(kb_name, search_query, top_k=sparse_top_k)
         except Exception as e:
             logger.error(f"BM25 search failed: {e}")
             sparse_hits = []
 
         if not dense_hits and not sparse_hits:
-            logger.warning(f"No search results found in KB '{kb_name}' for query: {query_str}")
+            logger.warning(f"No search results found in KB '{kb_name}' for query: {search_query}")
             return []
 
         # 4. RRF (Reciprocal Rank Fusion) 双路融合打分
@@ -126,7 +121,7 @@ class HybridRetriever:
         # 5. Reranker 精排
         if enable_rerank and candidate_tuples:
             final_hits = reranker_client.rerank(
-                query=query_str,
+                query=search_query,
                 candidates=candidate_tuples,
                 top_n=rerank_top_n
             )
@@ -140,6 +135,12 @@ class HybridRetriever:
             filtered_hits = [(chunk, score) for chunk, score in final_hits if score >= threshold]
             if len(filtered_hits) < len(final_hits):
                 logger.info(f"Filtered out {len(final_hits) - len(filtered_hits)} low-score chunks (threshold: {threshold})")
+            
+            # 软保底机制：若全部被阈值过滤，但候选块确实有内容且最高分高于软保底线（>= 0.02），保留最高分的 1 个切片避免彻底落空
+            if not filtered_hits and final_hits and final_hits[0][1] >= 0.02:
+                logger.info(f"Soft fallback: retained top-1 chunk with score {final_hits[0][1]:.4f}")
+                filtered_hits = [final_hits[0]]
+
             final_hits = filtered_hits
 
         # 7. 组装标准化输出结构
@@ -157,6 +158,7 @@ class HybridRetriever:
                 "score": round(final_score, 4),
                 "dense_rank": fusion_info.get("dense_rank"),
                 "sparse_rank": fusion_info.get("sparse_rank"),
+                "search_query": search_query,
                 "metadata": chunk.get("metadata", {})
             }
             results.append(result_item)

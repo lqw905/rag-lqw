@@ -127,6 +127,17 @@ def test_reranker_fallback():
     assert reranked[0][0]["chunk_id"] == "c1"
 
 
+def test_query_rewriter_rules():
+    from app.core.query_rewriter import QueryRewriter
+    rewriter = QueryRewriter(api_key="")
+    # 纯问候/闲聊跳过 LLM
+    assert rewriter.rewrite("你好") == "你好"
+    # 短文本（<=4字）跳过 LLM
+    assert rewriter.rewrite("抗日战争") == "抗日战争"
+    # 无有效 API Key 时平滑回退
+    assert rewriter.rewrite("请问一下这篇技术文档的主要内容是什么？") == "请问一下这篇技术文档的主要内容是什么？"
+
+
 def test_fastapi_health():
     client = TestClient(app)
     response = client.get("/health")

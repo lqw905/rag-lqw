@@ -55,6 +55,7 @@ export interface SearchHit {
 export interface SearchResponse {
   kb_name: string;
   query: string;
+  rewritten_query?: string;
   total_hits: number;
   hits: SearchHit[];
 }

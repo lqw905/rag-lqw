@@ -8,8 +8,7 @@ datas = [
     ('web/dist', 'web/dist'),
     ('.env.example', '.'),
     ('private_knowledge', 'private_knowledge'),
-    ('packaging/transparent.ico', 'packaging'),
-    ('packaging/transparent.ico', '.'),
+    ('packaging/app.ico', '.'),
 ]
 
 datas += collect_data_files('jieba')
@@ -90,7 +89,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='RAG-GK',
-    icon=['packaging/transparent.ico'],
+    icon=['packaging/app.ico'],
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

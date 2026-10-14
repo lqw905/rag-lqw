@@ -76,6 +76,8 @@ export const api = {
     sparse_top_k?: number;
     rerank_top_n?: number;
     enable_rerank?: boolean;
+    enable_rewrite?: boolean;
+    min_score?: number;
   }): Promise<SearchResponse> {
     const res = await fetch('/api/v1/retrieval/search', {
       method: 'POST',
@@ -96,6 +98,8 @@ export const api = {
     history: { role: string; content: string }[];
     top_n?: number;
     enable_rerank?: boolean;
+    enable_rewrite?: boolean;
+    min_score?: number;
     onReferences: (references: ReferenceItem[]) => void;
     onDelta: (delta: string) => void;
     onDone: (totalTokens?: number) => void;
@@ -125,6 +129,8 @@ export const api = {
           stream: true,
           top_n: params.top_n ?? 5,
           enable_rerank: params.enable_rerank ?? true,
+          enable_rewrite: params.enable_rewrite,
+          min_score: params.min_score,
         }),
         signal: params.signal,
       });

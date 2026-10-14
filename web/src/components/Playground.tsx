@@ -15,6 +15,9 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
   const [sparseTopK, setSparseTopK] = useState(20);
   const [rerankTopN, setRerankTopN] = useState(5);
   const [enableRerank, setEnableRerank] = useState(true);
+  const [enableRewrite, setEnableRewrite] = useState(true);
+  const [minScore, setMinScore] = useState(0.08);
+  const [rewrittenQuery, setRewrittenQuery] = useState<string | null>(null);
 
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +42,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
 
     setIsLoading(true);
     setError(null);
+    setRewrittenQuery(null);
 
     try {
       const res = await api.searchPlayground({
@@ -48,8 +52,11 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
         sparse_top_k: sparseTopK,
         rerank_top_n: rerankTopN,
         enable_rerank: enableRerank,
+        enable_rewrite: enableRewrite,
+        min_score: minScore,
       });
       setHits(res.hits || []);
+      setRewrittenQuery(res.rewritten_query || null);
     } catch (err: any) {
       setError(err.message || '检索失败');
     } finally {
@@ -153,7 +160,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
 
               <div>
                 <label className="block text-ink-500 mb-1">
-                  Rerank 最终输出 (Top-N): <span className="text-ink-900 font-mono font-semibold">{rerankTopN}</span>
+                  Rerank 输出 (Top-N): <span className="text-ink-900 font-mono font-semibold">{rerankTopN}</span>
                 </label>
                 <input
                   type="range"
@@ -166,17 +173,46 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
                 />
               </div>
 
-              <div className="flex items-center sm:justify-end gap-2 pt-2 sm:pt-0">
-                <label className="flex items-center gap-2 cursor-pointer text-ink-700 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={enableRerank}
-                    onChange={(e) => setEnableRerank(e.target.checked)}
-                    className="w-4 h-4 rounded text-ink-900 focus:ring-stone-400 bg-paper border-border"
-                  />
-                  <span>启用 Reranker 精排</span>
+              <div>
+                <label className="block text-ink-500 mb-1 flex items-center justify-between">
+                  <span>过滤阈值 (Min Score):</span>
+                  <span className="text-ink-900 font-mono font-semibold bg-subtle px-1.5 py-0.5 rounded border border-border">
+                    {minScore.toFixed(2)}
+                  </span>
                 </label>
+                <input
+                  type="range"
+                  min="0.00"
+                  max="0.50"
+                  step="0.01"
+                  value={minScore}
+                  onChange={(e) => setMinScore(Number(e.target.value))}
+                  className="w-full accent-stone-900"
+                  title="低于此相关度得分的噪音切片将被自动剔除"
+                />
               </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-border/60 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer text-ink-700 font-medium">
+                <input
+                  type="checkbox"
+                  checked={enableRerank}
+                  onChange={(e) => setEnableRerank(e.target.checked)}
+                  className="w-4 h-4 rounded text-ink-900 focus:ring-stone-400 bg-paper border-border"
+                />
+                <span>启用 Reranker 语义精排</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-ink-700 font-medium">
+                <input
+                  type="checkbox"
+                  checked={enableRewrite}
+                  onChange={(e) => setEnableRewrite(e.target.checked)}
+                  className="w-4 h-4 rounded text-ink-900 focus:ring-stone-400 bg-paper border-border"
+                />
+                <span>启用 LLM 检索词提纯改写</span>
+              </label>
             </div>
           </form>
 
@@ -189,6 +225,16 @@ export const Playground: React.FC<PlaygroundProps> = ({ isOpen, onClose, selecte
 
           {/* Results List */}
           <div className="space-y-3 pt-1">
+            {rewrittenQuery && rewrittenQuery !== query && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                <span className="font-semibold">✨ LLM 意图提纯词:</span>
+                <span className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-300 font-medium">
+                  {rewrittenQuery}
+                </span>
+                <span className="text-[11px] text-emerald-600">（已自动去除口语噪声并对齐知识库实体）</span>
+              </div>
+            )}
+
             {hits.length > 0 && (
               <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wider flex items-center justify-between px-1">
                 <span>检索命中结果 (共 {hits.length} 条)</span>

@@ -55,6 +55,8 @@ class SearchRequest(BaseModel):
     sparse_top_k: Optional[int] = Field(20, description="BM25 检索召回量")
     rerank_top_n: Optional[int] = Field(5, description="Rerank 精排保留量")
     enable_rerank: Optional[bool] = Field(True, description="是否启用重排")
+    enable_rewrite: Optional[bool] = Field(None, description="是否启用 LLM 查询提纯改写（默认读取系统配置）")
+    min_score: Optional[float] = Field(None, description="置信度过滤阈值，低于此分数的切片将被过滤（默认读取系统配置 0.08）")
 
 
 class SearchHit(BaseModel):
@@ -71,6 +73,7 @@ class SearchHit(BaseModel):
 class SearchResponse(BaseModel):
     kb_name: str
     query: str
+    rewritten_query: Optional[str] = Field(None, description="改写提纯后的实际检索查询")
     total_hits: int
     hits: List[SearchHit]
 
@@ -87,6 +90,8 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = Field(True, description="是否流式输出 (SSE)")
     top_n: Optional[int] = Field(5, description="检索参考切片数量")
     enable_rerank: Optional[bool] = Field(True, description="是否启用 Rerank")
+    enable_rewrite: Optional[bool] = Field(None, description="是否启用 LLM 查询提纯改写（默认读取系统配置）")
+    min_score: Optional[float] = Field(None, description="置信度过滤阈值（默认读取系统配置 0.08）")
 
 
 class ReferenceItem(BaseModel):

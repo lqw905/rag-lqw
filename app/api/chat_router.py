@@ -34,7 +34,9 @@ def search_chunks(req: SearchRequest):
             dense_top_k=req.dense_top_k or 20,
             sparse_top_k=req.sparse_top_k or 20,
             rerank_top_n=req.rerank_top_n or 5,
-            enable_rerank=req.enable_rerank if req.enable_rerank is not None else True
+            enable_rerank=req.enable_rerank if req.enable_rerank is not None else True,
+            enable_rewrite=req.enable_rewrite,
+            min_score=req.min_score
         )
 
         search_hits = [
@@ -51,9 +53,11 @@ def search_chunks(req: SearchRequest):
             for h in hits
         ]
 
+        rewritten_query = hits[0].get("search_query") if hits else None
         return SearchResponse(
             kb_name=kb_name,
             query=query,
+            rewritten_query=rewritten_query,
             total_hits=len(search_hits),
             hits=search_hits
         )
@@ -74,19 +78,22 @@ async def chat_completions(req: ChatCompletionRequest):
     if not query:
         raise HTTPException(status_code=400, detail="用户问题不能为空")
 
-    # 1. 混合多路召回 + Rerank
+    history_dicts = [msg.model_dump() for msg in req.history] if req.history else []
+
+    # 1. 混合多路召回 + Rerank（自动结合上下文进行 LLM 查询提纯与指代消解）
     try:
         retrieved_chunks = retriever.retrieve(
             kb_name=kb_name,
             query=query,
             rerank_top_n=req.top_n or 5,
-            enable_rerank=req.enable_rerank if req.enable_rerank is not None else True
+            enable_rerank=req.enable_rerank if req.enable_rerank is not None else True,
+            enable_rewrite=req.enable_rewrite,
+            chat_history=history_dicts,
+            min_score=req.min_score
         )
     except Exception as e:
         logger.error(f"Retrieval during chat failed: {e}")
         retrieved_chunks = []
-
-    history_dicts = [msg.model_dump() for msg in req.history] if req.history else []
 
     # 2. 流式响应分支
     if req.stream:

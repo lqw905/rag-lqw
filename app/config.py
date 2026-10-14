@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     RRF_K: int = 60
     RERANK_MIN_SCORE: float = 0.08  # 相关度置信度阈值，低于此分数的噪音切片自动过滤
 
+    # Query Rewriting parameters
+    ENABLE_QUERY_REWRITE: bool = True
+    QUERY_REWRITE_TIMEOUT: float = 4.0  # 查询提纯调用超时时间（秒），超时自动降级使用原查询
+
     # Server Settings
     HOST: str = "0.0.0.0"
     PORT: int = 8000

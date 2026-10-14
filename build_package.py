@@ -123,11 +123,11 @@ def main():
         shutil.copytree(src_data, dest_data)
         print("[+] 同步已有知识库索引数据 (data/) 到打包目录")
 
-    src_ico = ROOT_DIR / "packaging" / "transparent.ico"
-    dest_ico = DIST_DIR / "RAG-GK" / "transparent.ico"
+    src_ico = ROOT_DIR / "packaging" / "app.ico"
+    dest_ico = DIST_DIR / "RAG-GK" / "app.ico"
     if src_ico.exists():
         shutil.copy(src_ico, dest_ico)
-        print("[+] 同步透明图标 transparent.ico 到打包目录")
+        print("[+] 同步 App 图标 app.ico 到打包目录")
 
     # 5. 步骤 3：NSIS 生成安装程序
     nsi_file = PACKAGING_DIR / "installer.nsi"

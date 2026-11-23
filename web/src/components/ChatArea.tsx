@@ -469,8 +469,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                       {message.content}
                     </p>
                   ) : (
-                    /* AI 回答渲染为研究简报卡片 */
-                    <div className="mr-auto w-[94%] space-y-4 rounded-2xl rounded-tl-sm border border-border bg-surface p-4 shadow-card sm:w-[88%] sm:p-6">
+                    <div className="mr-auto w-[94%] space-y-4 sm:w-[88%]">
                       
                       {/* 顶部事实溯源横条 */}
                       {hasRefs && (

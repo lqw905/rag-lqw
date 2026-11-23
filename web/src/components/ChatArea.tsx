@@ -6,6 +6,8 @@ import {
   CornerDownLeft,
   CheckCircle2,
   ChevronRight,
+  Check,
+  Copy,
   StopCircle,
   Plus,
   SlidersHorizontal,
@@ -29,6 +31,42 @@ interface ChatAreaProps {
   onEnableRewriteChange: (val: boolean) => void;
   enableRerank: boolean;
   onEnableRerankChange: (val: boolean) => void;
+}
+
+function CopyReplyButton({ content }: { content: string }) {
+  const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const resetTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(resetTimer.current), []);
+
+  const handleCopy = async () => {
+    window.clearTimeout(resetTimer.current);
+    try {
+      await navigator.clipboard.writeText(content);
+      setStatus('copied');
+      resetTimer.current = window.setTimeout(() => setStatus('idle'), 2000);
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={status === 'copied' ? '已复制回复' : '复制回复'}
+        className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 text-ink-700 transition-colors hover:bg-subtle hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-700 cursor-pointer"
+      >
+        {status === 'copied' ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+        <span aria-hidden="true">{status === 'copied' ? '已复制' : '复制'}</span>
+      </button>
+      <span role="status" className={status === 'error' ? 'text-ink-700' : 'sr-only'}>
+        {status === 'copied' && '已复制回复'}
+        {status === 'error' && '复制失败，请选中正文后手动复制。'}
+      </span>
+    </div>
+  );
 }
 
 interface RetrievalSettingsPopoverProps {
@@ -425,21 +463,18 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               const hasRefs = message.references && message.references.length > 0;
 
               return (
-                <div key={message.id} className="space-y-3 animate-fade-in">
-                  {/* 用户提问渲染为典雅的章节标题 */}
+                <div key={message.id} className="animate-fade-in">
                   {isUser ? (
-                    <div className="pt-4 border-t border-border/80 first:border-t-0 first:pt-0">
-                      <h3 className="text-lg font-semibold text-ink-900 font-sans tracking-tight leading-snug">
-                        {message.content}
-                      </h3>
-                    </div>
+                    <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm border border-border bg-subtle px-4 py-2.5 text-sm leading-relaxed text-ink-900 [overflow-wrap:anywhere] sm:max-w-[72%] sm:text-base">
+                      {message.content}
+                    </p>
                   ) : (
                     /* AI 回答渲染为研究简报卡片 */
-                    <div className="bg-surface border border-border rounded-xl p-6 shadow-card space-y-4">
+                    <div className="mr-auto w-[94%] space-y-4 rounded-2xl rounded-tl-sm border border-border bg-surface p-4 shadow-card sm:w-[88%] sm:p-6">
                       
                       {/* 顶部事实溯源横条 */}
                       {hasRefs && (
-                        <div className="flex items-center justify-between pb-3.5 border-b border-border text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3.5 text-xs">
                           <div className="flex items-center space-x-2 text-ink-700">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                             <span className="font-medium">
@@ -457,13 +492,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                       )}
 
                       {/* Markdown 正文 */}
-                      <div className="markdown-body">
+                      <div className="markdown-body overflow-x-auto [overflow-wrap:anywhere]">
                         {renderMessageContent(message.content, message.references)}
                         {message.isStreaming && (
                           <span className="inline-block w-2 h-4 bg-ink-900 animate-pulse ml-1 align-middle" />
                         )}
                       </div>
 
+                      {message.content.trim() && <CopyReplyButton content={message.content} />}
                     </div>
                   )}
                 </div>

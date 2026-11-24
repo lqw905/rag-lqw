@@ -138,24 +138,16 @@ const RetrievalSettingsPopover: React.FC<RetrievalSettingsPopoverProps> = ({
         onMouseDown={(e) => {
           e.stopPropagation();
         }}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border cursor-pointer select-none ${
+        aria-expanded={isOpen}
+        className={`flex items-center gap-1 whitespace-nowrap px-2 py-0.5 rounded-lg text-xs font-medium transition-all border cursor-pointer select-none ${
           isOpen
             ? 'bg-ink-900 text-white border-ink-900 shadow-xs'
             : 'bg-subtle hover:bg-surface text-ink-700 border-border hover:border-stone-400'
         }`}
         title="自主调节过滤阈值、Top-N 与查询提纯"
       >
-        <SlidersHorizontal className="w-3.5 h-3.5" />
+        <SlidersHorizontal className="w-3 h-3" aria-hidden="true" />
         <span>检索参数</span>
-        <span
-          className={`font-mono text-[10px] px-1 py-0.2 rounded border ${
-            isOpen
-              ? 'bg-stone-800 text-stone-200 border-stone-700'
-              : 'bg-paper text-ink-900 border-border'
-          }`}
-        >
-          阈值: {minScore.toFixed(2)}
-        </span>
       </button>
 
       {isOpen && (

@@ -832,7 +832,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 placeholder="搜索对话内容..."
                 className="w-full bg-transparent text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none"
               />
-              {searchModalQuery ? (
+              {searchModalQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchModalQuery('')}
@@ -840,10 +840,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
-              ) : (
-                <span className="text-[10px] font-mono text-ink-400 bg-subtle px-1.5 py-0.5 rounded border border-border">
-                  ESC 关闭
-                </span>
               )}
             </div>
 
